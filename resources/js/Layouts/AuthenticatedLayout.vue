@@ -1,198 +1,167 @@
-<script setup>
-import { ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
-
-const showingNavigationDropdown = ref(false);
-</script>
-
 <template>
-    <div>
-        <div class="min-h-screen bg-gray-100">
-            <nav
-                class="border-b border-gray-100 bg-white"
-            >
-                <!-- Primary Navigation Menu -->
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-16 justify-between">
-                        <div class="flex">
-                            <!-- Logo -->
-                            <div class="flex shrink-0 items-center">
-                                <Link :href="route('dashboard')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800"
-                                    />
-                                </Link>
-                            </div>
+    <div class="min-h-screen bg-gradient-to-br from-primary-50 to-teal-50 dark:from-primary-950 dark:to-teal-950">
+        <!-- Sidebar with event binding -->
+        <Sidebar @update:collapsed="isSidebarCollapsed = $event" />
 
-                            <!-- Navigation Links -->
-                            <div
-                                class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
-                            >
-                                <NavLink
-                                    :href="route('dashboard')"
-                                    :active="route().current('dashboard')"
-                                >
-                                    Dashboard
-                                </NavLink>
+        <!-- Main Content - adjusts based on sidebar state -->
+        <div :class="['transition-all duration-300', isSidebarCollapsed ? 'ml-20' : 'ml-64']">
+            <!-- Top Bar -->
+            <header class="bg-white/80 dark:bg-primary-900/80 backdrop-blur-xl border-b border-primary-200 dark:border-primary-800 sticky top-0 z-30 shadow-sm">
+                <div class="px-6 py-4">
+                    <!-- First Row: Page Title with Icon and Right Actions -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <!-- Page Icon -->
+                            <div class="p-2.5 bg-gradient-to-br from-primary-500 to-teal-500 rounded-xl shadow-md">
+                                <component :is="currentPageIcon" class="w-5 h-5 text-white" />
                             </div>
+                            <!-- Page Title -->
+                            <h1 class="text-2xl font-bold text-primary-900 dark:text-white">
+                                {{ currentPageTitle }}
+                            </h1>
                         </div>
 
-                        <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <!-- Settings Dropdown -->
-                            <div class="relative ms-3">
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <span class="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {{ $page.props.auth.user.name }}
-
-                                                <svg
-                                                    class="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink
-                                            :href="route('profile.edit')"
-                                        >
-                                            Profile
-                                        </DropdownLink>
-                                        <DropdownLink
-                                            :href="route('logout')"
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </DropdownLink>
-                                    </template>
-                                </Dropdown>
+                        <!-- Right Side Actions -->
+                        <div class="flex items-center space-x-4">
+                            <!-- Search (hidden on mobile) -->
+                            <div class="relative hidden md:block">
+                                <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    class="pl-10 pr-4 py-2.5 w-64 rounded-xl border border-primary-200 dark:border-primary-700 bg-white dark:bg-primary-800/50 focus:bg-white dark:focus:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 dark:placeholder-primary-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
+                                />
                             </div>
-                        </div>
 
-                        <!-- Hamburger -->
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <button
-                                @click="
-                                    showingNavigationDropdown =
-                                        !showingNavigationDropdown
-                                "
-                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
-                            >
-                                <svg
-                                    class="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        :class="{
-                                            hidden: showingNavigationDropdown,
-                                            'inline-flex':
-                                                !showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        :class="{
-                                            hidden: !showingNavigationDropdown,
-                                            'inline-flex':
-                                                showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
+                            <!-- Theme Toggle -->
+                            <ThemeToggle />
+
+                            <!-- Notifications -->
+                            <button class="relative p-2.5 rounded-xl hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
+                                <BellIcon class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                                <span class="absolute top-2 right-2 w-2 h-2 bg-teal-500 rounded-full ring-2 ring-white dark:ring-primary-900"></span>
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Responsive Navigation Menu -->
-                <div
-                    :class="{
-                        block: showingNavigationDropdown,
-                        hidden: !showingNavigationDropdown,
-                    }"
-                    class="sm:hidden"
-                >
-                    <div class="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            :href="route('dashboard')"
-                            :active="route().current('dashboard')"
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
-
-                    <!-- Responsive Settings Options -->
-                    <div
-                        class="border-t border-gray-200 pb-1 pt-4"
-                    >
-                        <div class="px-4">
-                            <div
-                                class="text-base font-medium text-gray-800"
-                            >
-                                {{ $page.props.auth.user.name }}
-                            </div>
-                            <div class="text-sm font-medium text-gray-500">
-                                {{ $page.props.auth.user.email }}
-                            </div>
-                        </div>
-
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                :href="route('logout')"
-                                method="post"
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
+                    <!-- Second Row: Welcome Message - ROLE REMOVED -->
+                    <div class="mt-3">
+                        <p class="text-base text-primary-600 dark:text-primary-400">
+                            Welcome back, <span class="font-semibold text-primary-900 dark:text-white">{{ userName }}</span>
+                        </p>
                     </div>
                 </div>
-            </nav>
 
-            <!-- Page Heading -->
-            <header
-                class="bg-white shadow"
-                v-if="$slots.header"
-            >
-                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                    <slot name="header" />
+                <!-- Breadcrumbs -->
+                <div v-if="$slots.breadcrumbs" class="px-6 pb-3">
+                    <slot name="breadcrumbs" />
                 </div>
             </header>
 
             <!-- Page Content -->
-            <main>
+            <main class="p-6">
+                <!-- Flash Messages -->
+                <div v-if="flash?.success" class="mb-4 p-4 bg-green-100 dark:bg-green-900/50 border-l-4 border-green-500 text-green-800 dark:text-green-100 rounded-r-lg">
+                    {{ flash.success }}
+                </div>
+                <div v-if="flash?.error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-800 dark:text-red-100 rounded-r-lg">
+                    {{ flash.error }}
+                </div>
+                <div v-if="flash?.warning" class="mb-4 p-4 bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-100 rounded-r-lg">
+                    {{ flash.warning }}
+                </div>
+
                 <slot />
             </main>
         </div>
     </div>
 </template>
+
+<script setup>
+import { computed, ref } from 'vue'
+import { usePage } from '@inertiajs/vue3'
+import Sidebar from './Sidebar.vue'
+import ThemeToggle from '@/Components/ThemeToggle.vue'
+import {
+    MagnifyingGlassIcon,
+    BellIcon,
+    HomeIcon,
+    UserGroupIcon,
+    CurrencyDollarIcon,
+    TicketIcon,
+    CubeIcon,
+    ChartBarIcon,
+    EnvelopeIcon,
+    Cog6ToothIcon
+} from '@heroicons/vue/24/outline'
+
+const page = usePage()
+
+// Track sidebar state
+const isSidebarCollapsed = ref(false)
+
+// Safe access to flash messages
+const flash = computed(() => page.props?.flash || {})
+
+// Get current user info - only need name now
+const user = computed(() => page.props?.auth?.user || {})
+const userName = computed(() => user.value?.name || 'User')
+
+// Get current route path
+const currentPath = computed(() => window.location.pathname)
+
+// Page titles and icons based on route
+const pageConfig = computed(() => {
+    const path = currentPath.value
+    
+    if (path.includes('/dashboard')) {
+        return {
+            title: 'Dashboard',
+            icon: HomeIcon
+        }
+    } else if (path.includes('/clients')) {
+        return {
+            title: 'Clients',
+            icon: UserGroupIcon
+        }
+    } else if (path.includes('/subscriptions')) {
+        return {
+            title: 'Subscriptions',
+            icon: CurrencyDollarIcon
+        }
+    } else if (path.includes('/tickets')) {
+        return {
+            title: 'Tickets',
+            icon: TicketIcon
+        }
+    } else if (path.includes('/versions')) {
+        return {
+            title: 'Versions',
+            icon: CubeIcon
+        }
+    } else if (path.includes('/reports')) {
+        return {
+            title: 'Reports',
+            icon: ChartBarIcon
+        }
+    } else if (path.includes('/communications')) {
+        return {
+            title: 'Communications',
+            icon: EnvelopeIcon
+        }
+    } else if (path.includes('/settings')) {
+        return {
+            title: 'Settings',
+            icon: Cog6ToothIcon
+        }
+    } else {
+        return {
+            title: 'Healix-Plus',
+            icon: HomeIcon
+        }
+    }
+})
+
+const currentPageTitle = computed(() => pageConfig.value.title)
+const currentPageIcon = computed(() => pageConfig.value.icon)
+</script>
