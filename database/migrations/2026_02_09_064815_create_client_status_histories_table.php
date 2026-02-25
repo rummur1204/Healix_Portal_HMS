@@ -8,6 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('client_status_histories', function (Blueprint $table) {
+
             $table->id();
             $table->unsignedBigInteger('client_id');
             $table->enum('old_status', ['pending', 'onboarding', 'active', 'suspended', 'rejected', 'churned'])->nullable();
