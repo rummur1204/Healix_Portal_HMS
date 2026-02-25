@@ -27,12 +27,12 @@
                         :href="item.href"
                         :class="[
                             'sidebar-link group flex items-center px-4 py-4 rounded-xl transition-all duration-200',
-                            page.url.startsWith(item.href) 
+                            isActiveRoute(item.href)
                                 ? 'bg-primary-700 dark:bg-primary-800 text-white shadow-md border-l-4 border-teal-400' 
                                 : 'text-primary-100 dark:text-primary-200 hover:bg-primary-700/70 dark:hover:bg-primary-800/70 hover:text-white hover:border-l-4 hover:border-teal-400/50'
                         ]"
                     >
-                        <component :is="item.icon" class="w-6 h-6 flex-shrink-0" :class="isCollapsed ? 'mx-auto' : 'mr-4'" :style="{ color: page.url.startsWith(item.href) ? 'white' : 'rgba(255,255,255,0.95)' }" />
+                        <component :is="item.icon" class="w-6 h-6 flex-shrink-0" :class="isCollapsed ? 'mx-auto' : 'mr-4'" :style="{ color: isActiveRoute(item.href) ? 'white' : 'rgba(255,255,255,0.95)' }" />
                         <span v-if="!isCollapsed" class="flex-1 text-base font-semibold tracking-wide">{{ item.name }}</span>
                     </Link>
                 </div>
@@ -85,11 +85,21 @@ const toggleSidebar = () => {
     emit('update:collapsed', isCollapsed.value)
 }
 
-// Navigation items - NO BADGES
+// Helper function to check if route is active
+const isActiveRoute = (href) => {
+    // Special case for subscriptions - match both /subscriptions and /subscriptions/*
+    if (href === '/subscriptions') {
+        return page.url.startsWith('/subscriptions')
+    }
+    // For other routes, check exact match or starts with (for nested routes)
+    return page.url === href || page.url.startsWith(href + '/')
+}
+
+// Navigation items - CORRECTED subscription link
 const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Clients', href: '/clients', icon: UserGroupIcon },
-    { name: 'Subscriptions', href: '/subscriptions/plans', icon: CurrencyDollarIcon },
+    { name: 'Subscriptions', href: '/subscriptions', icon: CurrencyDollarIcon }, // Changed from '/subscriptions/plans' to '/subscriptions'
     { name: 'Tickets', href: '/tickets', icon: TicketIcon },
     { name: 'Versions', href: '/versions', icon: CubeIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },

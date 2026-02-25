@@ -161,7 +161,7 @@ class SubscriptionService
             
             // Prepare subscription data WITH subscription_id
             $subscriptionData = [
-                'subscription_id' => $subscriptionId, // CRITICAL: This was missing!
+                'subscription_id' => $subscriptionId,
                 'client_id' => $clientId,
                 'plan_id' => $planId,
                 'start_date' => $startDate,
@@ -404,7 +404,15 @@ class SubscriptionService
     // ============ HISTORY LOGGING ============
     
     /**
-     * Log subscription history
+     * Public wrapper for logHistory
+     */
+    public function addHistory($subscription, $action, $changes = [], $notes = null)
+    {
+        return $this->logHistory($subscription, $action, $changes, $notes);
+    }
+    
+    /**
+     * Log subscription history (protected)
      */
     protected function logHistory($subscription, $action, $changes = [], $notes = null)
     {
@@ -412,14 +420,14 @@ class SubscriptionService
             'subscription_id' => $subscription->id,
             'client_id' => $subscription->client_id,
             'action' => $action,
-            'old_plan_id' => $changes['plan_id']['old'] ?? null,
-            'new_plan_id' => $changes['plan_id']['new'] ?? null,
-            'old_status' => $changes['status']['old'] ?? null,
-            'new_status' => $changes['status']['new'] ?? null,
-            'old_price' => $changes['price']['old'] ?? null,
-            'new_price' => $changes['price']['new'] ?? null,
-            'old_end_date' => $changes['end_date']['old'] ?? null,
-            'new_end_date' => $changes['end_date']['new'] ?? null,
+            'old_plan_id' => $changes['plan_id']['old'] ?? $changes['old_plan_id'] ?? null,
+            'new_plan_id' => $changes['plan_id']['new'] ?? $changes['new_plan_id'] ?? null,
+            'old_status' => $changes['status']['old'] ?? $changes['old_status'] ?? null,
+            'new_status' => $changes['status']['new'] ?? $changes['new_status'] ?? null,
+            'old_price' => $changes['price']['old'] ?? $changes['old_price'] ?? null,
+            'new_price' => $changes['price']['new'] ?? $changes['new_price'] ?? null,
+            'old_end_date' => $changes['end_date']['old'] ?? $changes['old_end_date'] ?? null,
+            'new_end_date' => $changes['end_date']['new'] ?? $changes['new_end_date'] ?? null,
             'notes' => $notes,
             'performed_by_user_id' => Auth::id() ?? 1,
         ]);

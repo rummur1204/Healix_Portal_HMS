@@ -20,6 +20,11 @@ Route::get('/', function () {
 // ============ SUBSCRIPTION MODULE ROUTES (Protected) ============
 Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->group(function () {
     
+    // ===== MAIN SUBSCRIPTION PAGE WITH TABS =====
+    Route::get('/', function () {
+        return Inertia\Inertia::render('Subscriptions/Index');
+    })->name('index');
+    
     // ===== SUBSCRIPTION PLANS =====
     Route::resource('plans', SubscriptionPlanController::class)
         ->parameters(['plans' => 'subscriptionPlan']);
@@ -58,9 +63,13 @@ Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->gr
     Route::get('renewals/due/{days?}', [RenewalController::class, 'due'])->name('renewals.due');
     Route::post('renewals/{id}/process', [RenewalController::class, 'process'])->name('renewals.process');
 
-    // ===== PAYMENTS =====
-    Route::post('payments/record', [PaymentController::class, 'record'])->name('payments.record');
-    Route::get('payments/subscription/{subscriptionId}', [PaymentController::class, 'history'])->name('payments.history');
+    // ===== PAYMENTS (UPDATED WITH ALL ROUTES) =====
+    Route::prefix('payments')->name('payments.')->group(function () {
+        Route::post('record', [PaymentController::class, 'record'])->name('record');
+        Route::get('subscription/{subscriptionId}', [PaymentController::class, 'history'])->name('history');
+        Route::post('{id}/void', [PaymentController::class, 'void'])->name('void');
+        Route::get('{subscriptionId}/summary', [PaymentController::class, 'summary'])->name('summary');
+    });
 
     // ===== REPORTS =====
     Route::get('reports/renewals', [SubscriptionReportController::class, 'renewals'])->name('reports.renewals');
@@ -70,11 +79,11 @@ Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->gr
     Route::get('reports/export/renewals', [SubscriptionReportController::class, 'exportRenewals'])->name('reports.export.renewals');
 });
 
-// ============ CLIENTS API ROUTES ============
+// ============ CLIENTS API ROUTES (FIXED) ============
 Route::middleware(['auth'])->prefix('clients')->name('clients.')->group(function () {
     Route::get('/list', function () {
         try {
-            $clients = Client::select('id', 'organization_name', 'email')
+            $clients = Client::select('id', 'organization_name', 'primary_contact_email as email')
                 ->orderBy('organization_name')
                 ->get();
             return response()->json($clients);
@@ -85,8 +94,8 @@ Route::middleware(['auth'])->prefix('clients')->name('clients.')->group(function
     
     Route::get('/active', function () {
         try {
-            $clients = Client::where('is_active', true)
-                ->select('id', 'organization_name', 'email')
+            $clients = Client::where('status', 'active')
+                ->select('id', 'organization_name', 'primary_contact_email as email')
                 ->orderBy('organization_name')
                 ->get();
             return response()->json($clients);
@@ -94,6 +103,19 @@ Route::middleware(['auth'])->prefix('clients')->name('clients.')->group(function
             return response()->json(['error' => $e->getMessage()], 500);
         }
     })->name('active');
+    
+    Route::get('/with-subscriptions', function () {
+        try {
+            $clients = Client::whereHas('subscriptions')
+                ->withCount('subscriptions')
+                ->select('id', 'organization_name', 'primary_contact_email as email')
+                ->orderBy('organization_name')
+                ->get();
+            return response()->json($clients);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    })->name('with-subscriptions');
 });
 
 // ============ SETTINGS MODULE ROUTES ============
@@ -153,6 +175,11 @@ Route::get('/health', function () {
         'environment' => app()->environment()
     ]);
 })->name('health');
+
+// ============ TEST ROUTE FOR PAYMENTS (Remove in production) ============
+Route::middleware(['auth'])->get('/test/payments', function () {
+    return Inertia\Inertia::render('Test/Payments');
+})->name('test.payments');
 
 // ============ INCLUDE AUTH ROUTES (If Breeze is installed) ============
 require __DIR__.'/auth.php';
