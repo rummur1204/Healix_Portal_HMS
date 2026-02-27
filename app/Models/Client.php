@@ -7,7 +7,6 @@ class Client extends Model
 {
     protected $fillable = [
         'organization_name', 'organization_type_id',
-        'primary_contact_name', 'primary_contact_email', 'primary_contact_phone',
         'address_country', 'address_city', 'address_line', 'tax_reg_id',
         'preferred_contact_channel', 'note', 'created_by_user_id',
         'updated_by_user_id', 'status', 'do_not_email', 'do_not_sms', 'do_not_market'
@@ -24,14 +23,11 @@ class Client extends Model
     parent::boot();
 
     static::creating(function ($client) {
-        $nextNumber = self::count() + 1;
-
-        $client->client_code = 'CL-' . str_pad(
-            $nextNumber,
-            6,
-            '0',
-            STR_PAD_LEFT
-        );
+        // Get the last inserted ID and increment
+        $lastClient = self::orderBy('id', 'desc')->first();
+        $nextId = $lastClient ? $lastClient->id + 1 : 1;
+        
+        $client->client_code = 'CL-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
     });
 }
 

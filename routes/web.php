@@ -10,6 +10,7 @@ use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\OrganizationTypeController;
+use App\Http\Controllers\Clients\ClientController;
 use App\Models\Client;
 
 // ============ AUTHENTICATION ROUTES (Added by Breeze) ============
@@ -17,6 +18,17 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
+// ============ CLIENTS MODULE ROUTES (Protected) ============
+
+Route::middleware(['auth'])->group(function () {
+
+    Route::resource('clients', ClientController::class);
+
+    Route::post('clients/{client}/change-status',
+        [ClientController::class, 'changeStatus']
+    )->name('clients.change-status');
+
+});
 // ============ SUBSCRIPTION MODULE ROUTES (Protected) ============
 Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->group(function () {
     

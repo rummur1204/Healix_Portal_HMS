@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('clients', function (Blueprint $table) {
             $table->unique(
-                ['organization_name', 'primary_contact_email'],
+                ['organization_name', ],
                 'clients_org_email_unique'
             );
         });

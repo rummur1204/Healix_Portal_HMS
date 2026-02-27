@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('clients', function (Blueprint $table) {
             $table->index('organization_name');
-            $table->index('primary_contact_email');
+            // $table->index('primary_contact_email');
             $table->index('status');
             $table->index('organization_type_id');
         });
