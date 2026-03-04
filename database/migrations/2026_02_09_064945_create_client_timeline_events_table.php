@@ -9,7 +9,7 @@ return new class extends Migration
     {
         Schema::create('client_timeline_events', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('client_id')->nullable();
+            $table->unsignedBigInteger('client_id');
             $table->enum('event_type', [
                 'profile_created', 'profile_updated','profile_deleted', 'status_changed', 
                 'subscription_added', 'subscription_updated', 'ticket_created',
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedBigInteger('performed_by')->nullable();
             $table->timestamps();
             
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('set null');
+            $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('performed_by')->references('id')->on('users')->onDelete('set null');
         });
     }

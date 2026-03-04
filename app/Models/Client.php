@@ -2,9 +2,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+
 
 class Client extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'organization_name', 'organization_type_id',
         'address_country', 'address_city', 'address_line', 'tax_reg_id',

@@ -111,21 +111,16 @@ public function show(Client $client)
 {
     $client->load([
         'organizationType',
-        'technicalInfo',
         'contacts',
-        'notes',
-        'tasks',
-        'timelineEvents',
-        'statusHistory',
-        'subscriptions',
-        'tickets',
-        'deployments',
-        'currentVersion',
-        'communicationLogs'
+        'technicalInfo',
+        'notes.author',
+        'timelineEvents' => function ($query) {
+            $query->latest();
+        },
     ]);
 
     return Inertia::render('Clients/Show', [
-        'client' => $client
+        'client' => $client,
     ]);
 }
 
@@ -214,7 +209,7 @@ public function changeStatus(Request $request, Client $client)
             'client_id' => $client->id,
             'event_type' => 'status_changed',
             'description' => "Status changed from {$oldStatus} to {$request->status}",
-            'created_by_user_id' => auth()->id()
+            'performed_by' => auth()->id()
         ]);
     });
 

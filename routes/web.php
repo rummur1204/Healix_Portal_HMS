@@ -11,6 +11,9 @@ use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\OrganizationTypeController;
 use App\Http\Controllers\Clients\ClientController;
+use App\Http\Controllers\Clients\ClientTechnicalInfoController;
+use App\Http\Controllers\Clients\ClientNoteController;
+
 use App\Models\Client;
 
 // ============ AUTHENTICATION ROUTES (Added by Breeze) ============
@@ -27,6 +30,19 @@ Route::middleware(['auth'])->group(function () {
     Route::post('clients/{client}/change-status',
         [ClientController::class, 'changeStatus']
     )->name('clients.change-status');
+
+    Route::post('/clients/{client}/technical-info',
+    [ClientTechnicalInfoController::class, 'storeOrUpdate']
+    )->name('clients.technical-info.save');
+
+    Route::post('/clients/{client}/notes', [ClientNoteController::class, 'store'])
+    ->name('clients.notes.store');
+
+    Route::put('/clients/{client}/notes/{note}', [ClientNoteController::class, 'update'])
+    ->name('clients.notes.update');
+
+    Route::delete('/clients/{client}/notes/{note}', [ClientNoteController::class, 'destroy'])
+    ->name('clients.notes.destroy');
 
 });
 // ============ SUBSCRIPTION MODULE ROUTES (Protected) ============
