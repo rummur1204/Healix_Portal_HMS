@@ -151,36 +151,67 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+       Route::get('/tickets/{id}/detail', [TicketController::class, 'detail'])
+        ->name('tickets.detail');
 
     // Tickets
     Route::resource('tickets', TicketController::class);
-
+Route::put('/tickets/{ticket}/toggle-active', [TicketController::class, 'toggleActive'])
+    ->name('tickets.toggle-active');
     // Ticket Comments
     Route::get('/tickets/{ticket}/comments', [TicketCommentController::class, 'index'])->name('tickets.comments.index');
     Route::post('/tickets/{ticket}/comments', [TicketCommentController::class, 'store'])->name('tickets.comments.store');
     Route::put('/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'update'])->name('tickets.comments.update');
     Route::delete('/tickets/{ticket}/comments/{comment}', [TicketCommentController::class, 'destroy'])->name('tickets.comments.destroy');
+Route::get('/tickets/{id}/detail', [TicketController::class, 'detail'])->name('tickets.detail');
+    
+// Ticket Attachments
 
-    // Ticket Attachments
-    Route::get('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'index'])->name('tickets.attachments.index');
-    Route::post('/tickets/{ticket}/attachments', [TicketAttachmentController::class, 'store'])->name('tickets.attachments.store');
-    Route::put('/tickets/{ticket}/attachments', [TicketCommentController::class, 'update'])->name('tickets.attachments.update');
-    Route::delete('/tickets/{ticket}/attachments/{attachment}', [TicketAttachmentController::class, 'destroy'])->name('tickets.attachments.destroy');
 
+// Inside your auth middleware group
+Route::middleware(['auth'])->group(function () {
+    // Your existing routes...
+    
+    // Ticket attachments routes
+    Route::prefix('tickets/{ticket}/attachments')->name('tickets.attachments.')->group(function () {
+        Route::get('/', [TicketAttachmentController::class, 'index'])->name('index');
+        Route::post('/', [TicketAttachmentController::class, 'store'])->name('store');
+        Route::delete('/{attachment}', [TicketAttachmentController::class, 'destroy'])->name('destroy');
+        Route::get('/{attachment}/download', [TicketAttachmentController::class, 'download'])->name('download');
+    });
+});
+
+
+
+
+
+
+   
     // Ticket Tags
     Route::get('/tickets/{ticket}/tags', [TicketTagController::class, 'index'])->name('tickets.tags.index');
     Route::post('/tickets/{ticket}/tags', [TicketTagController::class, 'store'])->name('tickets.tags.store');
     Route::delete('/tickets/{ticket}/tags/{tag}', [TicketTagController::class, 'destroy'])->name('tickets.tags.destroy');
 
     // Ticket History
-    Route::get('/ticket/history/view', function () {
-        return Inertia\Inertia::render('Tickets/History');
-    })->name('tickets.history.view');
-    Route::get('/tickets/history', [TicketHistoryController::class, 'indexAll'])->name('tickets.history.all');
-    Route::get('/tickets/{ticket}/history', [TicketHistoryController::class, 'index'])->name('tickets.history.index');
-    Route::get('/tickets/{ticket}/history/summary', [TicketHistoryController::class, 'summary'])->name('tickets.history.summary');
-    Route::get('/history/{id}', [TicketHistoryController::class, 'show'])->name('history.show');
-    Route::delete('/history/{id}', [TicketHistoryController::class, 'destroy'])->name('history.destroy');
-});
+    // ... existing code up to line 193 ...
+
+    // Ticket History
+    // REMOVE THIS LINE: <?php
+
+    // Your existing routes...
+
+    // Ticket History Routes
+    Route::get('/ticket/history/view', [TicketHistoryController::class, 'indexAll'])
+    ->name('tickets.history.view');
+
+Route::get('/tickets/history', [TicketHistoryController::class, 'indexAll'])
+    ->name('tickets.history.all');
+
+// Delete history entry
+Route::delete('/history/{id}', [TicketHistoryController::class, 'destroy'])
+    ->name('history.destroy');
+
+    });
+   
 
 require __DIR__.'/auth.php';

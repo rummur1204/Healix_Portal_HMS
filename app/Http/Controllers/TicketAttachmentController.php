@@ -2,142 +2,133 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TicketAttachment;
 use App\Models\Ticket;
+use App\Models\TicketAttachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class TicketAttachmentController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Display a listing of the attachments for a ticket.
+     */
+    public function index(Ticket $ticket)
     {
-        $query = TicketAttachment::with(['ticket', 'uploadedBy']);
-
-        // Search filter
-        if ($request->has('search') && !empty($request->search)) {
-            $query->where('file_name', 'like', '%' . $request->search . '%');
-        }
-
-        // Sorting
-        $sortField = $request->get('sort_field', 'id');
-        $sortDirection = $request->get('sort_direction', 'desc');
+        // Add policy check if you have one
+        // $this->authorize('view', $ticket);
         
-        if (in_array($sortField, ['id', 'file_name', 'created_at'])) {
-            $query->orderBy($sortField, $sortDirection);
-        }
-
-        $attachments = $query->paginate(10)->withQueryString();
-
-        return Inertia::render('TicketAttachments/Index', [
-            'attachments' => $attachments,
-            'filters' => $request->only(['search', 'sort_field', 'sort_direction'])
-        ]);
-    }
-
-    public function create()
-    {
-        $tickets = Ticket::select('id', 'ticket_number')
-            ->orderBy('ticket_number')
+        $attachments = $ticket->attachments()
+            ->with('uploader:id,name')
+            ->latest()
             ->get();
-
-        return Inertia::render('TicketAttachments/Create', [
-            'tickets' => $tickets
-        ]);
-    }
-
-    public function store(Request $request)
-    {
-        $request->validate([
-            'ticket_id' => 'required|exists:tickets,id',
-            'file' => 'required|file|max:10240', // 10MB
-        ]);
-
-        try {
-            $file = $request->file('file');
-            $path = $file->store('ticket_attachments', 'public');
-
-            TicketAttachment::create([
-                'ticket_id' => $request->ticket_id,
-                'file_name' => $file->getClientOriginalName(),
-                'file_path' => $path,
-                'file_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
-                'upload_by_user_id' => auth()->id(),
-            ]);
-
-            return redirect()->route('ticket-attachments.index')
-                ->with('success', 'Attachment uploaded successfully.');
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to upload attachment: ' . $e->getMessage())
-                ->withInput();
-        }
-    }
-
-    public function edit(TicketAttachment $ticketAttachment)
-    {
-        $tickets = Ticket::select('id', 'ticket_number')
-            ->orderBy('ticket_number')
-            ->get();
-
-        return Inertia::render('TicketAttachments/Edit', [
-            'attachment' => $ticketAttachment,
-            'tickets' => $tickets
-        ]);
-    }
-
-    public function update(Request $request, TicketAttachment $ticketAttachment)
-    {
-        $request->validate([
-            'ticket_id' => 'required|exists:tickets,id',
-        ]);
-
-        try {
-            $ticketAttachment->update([
-                'ticket_id' => $request->ticket_id,
-            ]);
-
-            return redirect()->route('ticket-attachments.index')
-                ->with('success', 'Attachment updated successfully.');
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to update attachment: ' . $e->getMessage())
-                ->withInput();
-        }
-    }
-
-    public function destroy(TicketAttachment $ticketAttachment)
-    {
-        try {
-            // Delete the file from storage if it exists
-            if ($ticketAttachment->file_path && Storage::disk('public')->exists($ticketAttachment->file_path)) {
-                Storage::disk('public')->delete($ticketAttachment->file_path);
-            }
             
-            // Delete the database record
-            $ticketAttachment->delete();
+        // For Inertia, you can return as props or a dedicated page
+        return Inertia::render('Tickets/Attachments/Index', [
+            'ticket' => $ticket,
+            'attachments' => $attachments
+        ]);
+    }
 
-            if (request()->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Attachment deleted successfully.'
+    /**
+     * Store newly uploaded attachments.
+     */
+    public function store(Request $request, Ticket $ticket)
+    {
+        // Add policy check if you have one
+        // $this->authorize('update', $ticket);
+
+        $request->validate([
+            'attachments' => 'required|array',
+            'attachments.*' => 'required|file|max:10240', // 10MB max per file
+        ]);
+
+        $uploadedFiles = [];
+
+        foreach ($request->file('attachments') as $file) {
+            try {
+                // Generate a unique filename
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                
+                // Store file in ticket-specific directory
+                $path = $file->storeAs(
+                    'ticket-attachments/' . $ticket->id, 
+                    $filename, 
+                    'public'
+                );
+
+                // Create database record
+                $attachment = $ticket->attachments()->create([
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_type' => $file->getMimeType(),
+                    'file_size' => $file->getSize(),
+                    'upload_by_user_id' => Auth::id(),
                 ]);
-            }
 
-            return redirect()->back()->with('success', 'Attachment deleted successfully.');
-            
-        } catch (\Exception $e) {
-            if (request()->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to delete attachment: ' . $e->getMessage()
-                ], 500);
-            }
+                // Load the uploader relationship
+                $attachment->load('uploader:id,name');
+                
+                $uploadedFiles[] = $attachment;
 
-            return redirect()->back()->with('error', 'Failed to delete attachment: ' . $e->getMessage());
+            } catch (\Exception $e) {
+                Log::error('Failed to upload attachment: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to upload file: ' . $file->getClientOriginalName());
+            }
         }
+
+        return redirect()->back()->with('success', count($uploadedFiles) . ' file(s) uploaded successfully');
+    }
+
+    /**
+     * Remove the specified attachment.
+     */
+    public function destroy(Ticket $ticket, TicketAttachment $attachment)
+    {
+        // Verify attachment belongs to ticket
+        if ($attachment->ticket_id !== $ticket->id) {
+            return redirect()->back()->with('error', 'Attachment does not belong to this ticket');
+        }
+
+        // Add policy check if you have one
+        // $this->authorize('delete', $attachment);
+
+        try {
+            // Delete file from storage
+            if (Storage::disk('public')->exists($attachment->file_path)) {
+                Storage::disk('public')->delete($attachment->file_path);
+            }
+
+            // Delete record from database
+            $attachment->delete();
+
+            return redirect()->back()->with('success', 'File deleted successfully');
+
+        } catch (\Exception $e) {
+            Log::error('Failed to delete attachment: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete attachment');
+        }
+    }
+
+    /**
+     * Download the specified attachment.
+     */
+    public function download(Ticket $ticket, TicketAttachment $attachment)
+    {
+        // Verify attachment belongs to ticket
+        if ($attachment->ticket_id !== $ticket->id) {
+            abort(403, 'Attachment does not belong to this ticket');
+        }
+
+        // Add policy check if you have one
+        // $this->authorize('view', $ticket);
+
+        if (!Storage::disk('public')->exists($attachment->file_path)) {
+            abort(404, 'File not found');
+        }
+
+        return Storage::disk('public')->download($attachment->file_path, $attachment->file_name);
     }
 }

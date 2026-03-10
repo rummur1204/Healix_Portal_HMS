@@ -23,8 +23,8 @@
             <td>{{ history.ticket_id }}</td>
             <td>{{ history.ticket?.ticket_number ?? '-' }}</td>
             <td>{{ history.changed_field }}</td>
-            <td>{{ history.old_value ?? '-' }}</td>
-            <td>{{ history.new_value }}</td>
+            <td>{{ formatValue(history.changed_field, history.old_value) }}</td>
+            <td>{{ formatValue(history.changed_field, history.new_value) }}</td>
             <td>{{ history.changed_by?.name ?? 'Unknown' }}</td>
             <td>{{ formatDate(history.created_at) }}</td>
             <td class="text-center">
@@ -67,7 +67,7 @@ import { usePage, router } from '@inertiajs/vue3';
 
 const { props } = usePage();
 
-// Provide default empty pagination structure if history doesn't exist
+// Reactive history data
 const historyData = ref(props.history || {
   data: [],
   links: [],
@@ -75,45 +75,53 @@ const historyData = ref(props.history || {
   to: 0,
   total: 0,
   last_page: 1,
-  current_page: 1,
-  per_page: 15
+  current_page: 1
 });
 
+// Format datetime
 function formatDate(date) {
   if (!date) return '-';
   return new Date(date).toLocaleString();
 }
 
-// Pagination
-function goTo(url) {
-  if (url) {
-    router.visit(url, { preserveScroll: true });
+// Optional: Convert IDs to friendly names
+function formatValue(field, value) {
+  if (!value) return '-';
+  // Example: if the field is assigned_to_user_id, map to user name
+  if (field === 'assigned_to_user_id' && props.users) {
+    const user = props.users.find(u => u.id == value);
+    return user ? user.name : value;
   }
+  return value;
 }
 
-// Confirm and delete
-function confirmDelete(historyId) {
-  if (confirm('Are you sure you want to delete this history record?')) {
-    router.delete(`/history/${historyId}`, {
-      preserveScroll: true,
-      onSuccess: (page) => {
-        // Update the local data after successful deletion
-        if (page.props.history) {
-          historyData.value = page.props.history;
-        }
-        
-        // Show success message (you can replace this with a toast notification)
-        console.log('History entry deleted successfully');
-        
-        // Optional: Show alert for now
-        alert('History entry deleted successfully');
-      },
-      onError: (errors) => {
-        console.error('Error deleting history entry:', errors);
-        alert('Error deleting history entry. Please try again.');
+// Pagination
+function goTo(url) {
+  if (url) router.visit(url, { preserveScroll: true });
+}
+
+// Confirm delete
+function confirmDelete(id) {
+  if (!confirm('Are you sure you want to delete this history entry?')) return;
+
+  router.delete(`/history/${id}`, {
+    preserveScroll: true,
+    onSuccess: page => {
+      // Update local historyData without page reload
+      if (page.props.history) {
+        historyData.value = page.props.history;
+      } else {
+        // Remove locally if props not returned
+        historyData.value.data = historyData.value.data.filter(h => h.id !== id);
+        historyData.value.total -= 1;
       }
-    });
-  }
+      alert('History entry deleted successfully!');
+    },
+    onError: errors => {
+      console.error('Delete error:', errors);
+      alert('Error deleting history entry.');
+    }
+  });
 }
 </script>
 
@@ -125,15 +133,8 @@ function confirmDelete(historyId) {
   border-radius: 12px;
 }
 
-.history-header {
-  margin-bottom: 24px;
-}
-
-.history-title {
-  font-size: 28px;
-  font-weight: 600;
-  color: #2c5e2c;
-}
+.history-header { margin-bottom: 24px; }
+.history-title { font-size: 28px; font-weight: 600; color: #2c5e2c; }
 
 .history-table-wrapper {
   overflow-x: auto;
@@ -147,25 +148,19 @@ function confirmDelete(historyId) {
   border-collapse: collapse;
   min-width: 800px;
 }
-
 .history-table th,
 .history-table td {
   padding: 12px 16px;
   border-bottom: 1px solid #e0e8e0;
   font-size: 14px;
 }
-
 .history-table th {
   background-color: #f3f4f6;
   color: #2c5e2c;
   font-weight: 600;
   text-align: left;
 }
-
-.hover-row:hover {
-  background-color: #f8fff8;
-  transition: background 0.2s ease;
-}
+.hover-row:hover { background-color: #f8fff8; transition: 0.2s ease; }
 
 .btn-delete {
   background: #dc3545;
@@ -175,21 +170,11 @@ function confirmDelete(historyId) {
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: 0.3s;
 }
+.btn-delete:hover { background: #a71d2a; }
 
-.btn-delete:hover {
-  background: #a71d2a;
-}
-
-.pagination-wrapper {
-  margin-top: 16px;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
+.pagination-wrapper { margin-top: 16px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .pagination-btn {
   padding: 8px 16px;
   border: 1px solid #e0e8e0;
@@ -197,36 +182,15 @@ function confirmDelete(historyId) {
   background: white;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.3s ease;
+  transition: 0.3s;
 }
+.pagination-btn.active { background: #2c5e2c; color: white; border-color: #2c5e2c; }
+.pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pagination-btn:hover:not(:disabled) { background: #f0f7f0; }
 
-.pagination-btn.active {
-  background: #2c5e2c;
-  color: white;
-  border-color: #2c5e2c;
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: #f0f7f0;
-}
-
-.history-count {
-  margin-top: 16px;
-  text-align: center;
-  font-size: 14px;
-  color: #6c757d;
-}
+.history-count { margin-top: 16px; text-align: center; font-size: 14px; color: #6c757d; }
 
 @media (max-width: 768px) {
-  .history-table th,
-  .history-table td {
-    padding: 10px 12px;
-    font-size: 13px;
-  }
+  .history-table th, .history-table td { padding: 10px 12px; font-size: 13px; }
 }
 </style>

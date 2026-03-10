@@ -1,116 +1,148 @@
 <template>
-    <div class="ticket-form-container">
-        <div class="form-header">
-            <h1 class="form-title">Edit Ticket</h1>
-            <button @click="cancel" class="btn-cancel">Cancel</button>
+    <AuthenticatedLayout>
+        <div class="ticket-form-container">
+            <div class="form-header">
+                <h1 class="form-title">Edit Ticket</h1>
+                <button @click="cancel" class="btn-cancel">Cancel</button>
+            </div>
+
+            <form @submit.prevent="submitForm" class="ticket-form">
+                <div class="form-grid">
+
+                    <!-- LEFT COLUMN -->
+                    <div>
+
+                        <div class="form-group">
+                            <label>Client</label>
+                            <select v-model="form.client_id" class="form-input" disabled>
+                                <option v-for="client in clients"
+                                        :key="client.id"
+                                        :value="client.id">
+                                    {{ client.organization_name || client.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Priority *</label>
+                            <div class="select-wrapper">
+                                <select v-model="form.priority" 
+                                        class="form-select"
+                                        :class="{
+                                            'priority-low': form.priority === 'low',
+                                            'priority-medium': form.priority === 'medium',
+                                            'priority-high': form.priority === 'high',
+                                            'priority-critical': form.priority === 'critical'
+                                        }">
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                                <span class="select-arrow">▼</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Status *</label>
+                            <div class="select-wrapper">
+                                <select v-model="form.status" 
+                                        class="form-select"
+                                        :class="{
+                                            'status-new': form.status === 'new',
+                                            'status-progress': form.status === 'in_progress',
+                                            'status-waiting': form.status === 'waiting_for_client',
+                                            'status-resolved': form.status === 'resolved',
+                                            'status-closed': form.status === 'closed',
+                                            'status-rejected': form.status === 'rejected'
+                                        }">
+                                    <option value="new">New</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="waiting_for_client">Waiting for Client</option>
+                                    <option value="resolved">Resolved</option>
+                                    <option value="closed">Closed</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                                <span class="select-arrow">▼</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Assign To</label>
+                            <div class="select-wrapper">
+                                <select v-model="form.assigned_to_user_id" class="form-select">
+                                    <option :value="null">Unassigned</option>
+                                    <option v-for="user in users"
+                                            :key="user.id"
+                                            :value="user.id">
+                                        {{ user.name }}
+                                    </option>
+                                </select>
+                                <span class="select-arrow">▼</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Due Date</label>
+                            <input type="date"
+                                   v-model="form.due_date"
+                                   class="form-input">
+                        </div>
+
+                    </div>
+
+                    <!-- RIGHT COLUMN -->
+                    <div>
+
+                        <div class="form-group">
+                            <label>Ticket Number</label>
+                            <input :value="ticket.ticket_number"
+                                   class="form-input readonly"
+                                   readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input :value="ticket.title"
+                                   class="form-input readonly"
+                                   readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Created At</label>
+                            <input :value="formatDate(ticket.created_at)"
+                                   class="form-input readonly"
+                                   readonly>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">
+                        Update Ticket
+                    </button>
+                    <button type="button"
+                            @click="cancel"
+                            class="btn-cancel-form">
+                        Cancel
+                    </button>
+                </div>
+            </form>
         </div>
-
-        <form @submit.prevent="submitForm" class="ticket-form">
-            <div class="form-grid">
-
-                <!-- LEFT COLUMN -->
-                <div>
-
-                    <div class="form-group">
-                        <label>Client</label>
-                        <select v-model="form.client_id" class="form-input" disabled>
-                            <option v-for="client in clients"
-                                    :key="client.id"
-                                    :value="client.id">
-                                {{ client.organization_name || client.name }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Priority *</label>
-                        <select v-model="form.priority" class="form-input">
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="critical">Critical</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Status *</label>
-                        <select v-model="form.status" class="form-input">
-                            <option value="new">New</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="waiting_for_client">Waiting for Client</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="closed">Closed</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Assign To</label>
-                        <select v-model="form.assigned_to_user_id" class="form-input">
-                            <option :value="null">Unassigned</option>
-                            <option v-for="user in users"
-                                    :key="user.id"
-                                    :value="user.id">
-                                {{ user.name }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Due Date</label>
-                        <input type="date"
-                               v-model="form.due_date"
-                               class="form-input">
-                    </div>
-
-                </div>
-
-                <!-- RIGHT COLUMN -->
-                <div>
-
-                    <div class="form-group">
-                        <label>Ticket Number</label>
-                        <input :value="ticket.ticket_number"
-                               class="form-input"
-                               readonly>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Title</label>
-                        <input :value="ticket.title"
-                               class="form-input"
-                               readonly>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Created At</label>
-                        <input :value="formatDate(ticket.created_at)"
-                               class="form-input"
-                               readonly>
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn-submit">
-                    Update Ticket
-                </button>
-                <button type="button"
-                        @click="cancel"
-                        class="btn-cancel-form">
-                    Cancel
-                </button>
-            </div>
-        </form>
-    </div>
+    </AuthenticatedLayout>
 </template>
 
 <script>
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { router } from '@inertiajs/vue3'
 
 export default {
+    components: {
+        AuthenticatedLayout,
+    },
+
     props: {
         ticket: Object,
         clients: Array,
@@ -150,14 +182,9 @@ export default {
     }
 }
 </script>
+
 <style scoped>
-/* Keep your existing styles and add these enhanced dropdown styles */
-
 /* Enhanced Dropdown Styling */
-.dropdown-enhanced {
-    position: relative;
-}
-
 .select-wrapper {
     position: relative;
     width: 100%;
@@ -337,7 +364,7 @@ export default {
     margin-bottom: 20px;
 }
 
-.form-label {
+.form-group label {
     display: block;
     font-size: 14px;
     font-weight: 500;

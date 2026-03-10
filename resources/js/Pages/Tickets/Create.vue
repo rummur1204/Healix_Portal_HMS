@@ -1,413 +1,388 @@
 <!-- resources/js/components/Tickets/Form.vue -->
 <template>
+  <AuthenticatedLayout>
     <div class="ticket-form-container">
-        <div class="form-header">
-            <h1 class="form-title">{{ isEdit ? 'Edit Ticket' : 'Create New Ticket' }}</h1>
-            <button @click="cancel" class="btn-cancel">
-                Cancel
-            </button>
+      <div class="form-header">
+        <h1 class="form-title">{{ isEdit ? 'Edit Ticket' : 'Create New Ticket' }}</h1>
+        <button @click="cancel" class="btn-cancel">
+          Cancel
+        </button>
+      </div>
+
+      <form @submit.prevent="submitForm" class="ticket-form">
+        <div class="form-grid">
+          <!-- Left Column -->
+          <div class="form-left">
+            <!-- Client Dropdown -->
+            <div class="form-group dropdown-enhanced">
+              <label for="client_id" class="form-label">
+                Client <span class="required-star">*</span>
+                <span class="field-description">Select the client for this ticket</span>
+              </label>
+              <div class="select-wrapper">
+                <select 
+                  id="client_id"
+                  v-model="form.client_id"
+                  class="form-select"
+                  :class="{ 'error': errors.client_id, 'has-value': form.client_id }"
+                  required
+                >
+                  <option value="" disabled>-- Choose a client --</option>
+                  <option v-for="client in clients" :key="client.id" :value="client.id">
+                    {{ client.organization_name || client.name }}
+                  </option>
+                </select>
+                <span class="select-arrow">▼</span>
+              </div>
+              <span v-if="errors.client_id" class="error-message">{{ errors.client_id }}</span>
+            </div>
+
+            <!-- Ticket Type Dropdown -->
+            <div class="form-group dropdown-enhanced">
+              <label for="ticket_type" class="form-label">
+                Ticket Type <span class="required-star">*</span>
+                <span class="field-description">What kind of ticket is this?</span>
+              </label>
+              <div class="select-wrapper">
+                <select 
+                  id="ticket_type"
+                  v-model="form.ticket_type"
+                  class="form-select"
+                  :class="{ 'error': errors.ticket_type, 'has-value': form.ticket_type }"
+                  required
+                >
+                  <option value="" disabled>-- Select ticket type --</option>
+                  <option value="support_issue">🔧 Support Issue</option>
+                  <option value="feature_request">✨ Feature Request</option>
+                  <option value="bug">🐛 Bug</option>
+                  <option value="billing">💰 Billing</option>
+                  <option value="deployment">🚀 Deployment</option>
+                  <option value="other">📋 Other</option>
+                </select>
+                <span class="select-arrow">▼</span>
+              </div>
+              <span v-if="errors.ticket_type" class="error-message">{{ errors.ticket_type }}</span>
+            </div>
+
+            <!-- Priority Dropdown -->
+            <div class="form-group dropdown-enhanced">
+              <label for="priority" class="form-label">
+                Priority <span class="required-star">*</span>
+                <span class="field-description">Set the urgency level</span>
+              </label>
+              <div class="select-wrapper">
+                <select 
+                  id="priority"
+                  v-model="form.priority"
+                  class="form-select"
+                  :class="{ 
+                    'error': errors.priority,
+                    'priority-low': form.priority === 'low',
+                    'priority-medium': form.priority === 'medium',
+                    'priority-high': form.priority === 'high',
+                    'priority-critical': form.priority === 'critical'
+                  }"
+                  required
+                >
+                  <option value="" disabled>-- Set priority --</option>
+                  <option value="low">🟢 Low</option>
+                  <option value="medium">🟡 Medium</option>
+                  <option value="high">🟠 High</option>
+                  <option value="critical">🔴 Critical</option>
+                </select>
+                <span class="select-arrow">▼</span>
+              </div>
+              <span v-if="errors.priority" class="error-message">{{ errors.priority }}</span>
+            </div>
+
+            <!-- Title -->
+            <div class="form-group">
+              <label for="title" class="form-label">Title *</label>
+              <input 
+                type="text" 
+                id="title"
+                v-model="form.title"
+                class="form-input"
+                :class="{ 'error': errors.title }"
+                placeholder="Brief summary of the issue"
+                required
+              >
+              <span v-if="errors.title" class="error-message">{{ errors.title }}</span>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+              <label for="description" class="form-label">Description *</label>
+              <textarea 
+                id="description"
+                v-model="form.description"
+                class="form-textarea"
+                :class="{ 'error': errors.description }"
+                rows="4"
+                placeholder="Detailed description of the ticket..."
+                required
+              ></textarea>
+              <span v-if="errors.description" class="error-message">{{ errors.description }}</span>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="form-right">
+            <!-- Status (edit only) -->
+            <div v-if="isEdit" class="form-group dropdown-enhanced">
+              <label for="status" class="form-label">
+                Status *
+                <span class="field-description">Current ticket status</span>
+              </label>
+              <div class="select-wrapper">
+                <select 
+                  id="status"
+                  v-model="form.status"
+                  class="form-select"
+                  :class="{ 
+                    'error': errors.status,
+                    'status-new': form.status === 'new',
+                    'status-progress': form.status === 'in_progress',
+                    'status-waiting': form.status === 'waiting_for_client',
+                    'status-resolved': form.status === 'resolved',
+                    'status-closed': form.status === 'closed',
+                    'status-rejected': form.status === 'rejected'
+                  }"
+                  required
+                >
+                  <option value="" disabled>-- Select status --</option>
+                  <option value="new">🆕 New</option>
+                  <option value="in_progress">⚡ In Progress</option>
+                  <option value="waiting_for_client">⏳ Waiting for Client</option>
+                  <option value="resolved">✅ Resolved</option>
+                  <option value="closed">🔒 Closed</option>
+                  <option value="rejected">❌ Rejected</option>
+                </select>
+                <span class="select-arrow">▼</span>
+              </div>
+              <span v-if="errors.status" class="error-message">{{ errors.status }}</span>
+            </div>
+
+            <!-- Assigned To -->
+            <div class="form-group dropdown-enhanced">
+              <label for="assigned_to_user_id" class="form-label">
+                Assign To
+                <span class="field-description">Team member responsible</span>
+              </label>
+              <div class="select-wrapper">
+                <select 
+                  id="assigned_to_user_id"
+                  v-model="form.assigned_to_user_id"
+                  class="form-select"
+                  :class="{ 'error': errors.assigned_to_user_id, 'has-value': form.assigned_to_user_id }"
+                >
+                  <option :value="null">👤 Unassigned</option>
+                  <option v-for="user in users" :key="user.id" :value="user.id">
+                    👤 {{ user.name }}
+                  </option>
+                </select>
+                <span class="select-arrow">▼</span>
+              </div>
+              <span v-if="errors.assigned_to_user_id" class="error-message">{{ errors.assigned_to_user_id }}</span>
+            </div>
+
+            <!-- Active Toggle, Due Date, and Read-only fields remain same -->
+            <!-- ... (Keep your existing right column fields and form-actions) ... -->
+          </div>
         </div>
 
-        <form @submit.prevent="submitForm" class="ticket-form">
-            <div class="form-grid">
-                <!-- Left Column -->
-                <div class="form-left">
-                    <!-- Enhanced Client Dropdown with search/filter capability -->
-                    <div class="form-group dropdown-enhanced">
-                        <label for="client_id" class="form-label">
-                            Client <span class="required-star">*</span>
-                            <span class="field-description">Select the client for this ticket</span>
-                        </label>
-                        <div class="select-wrapper">
-                            <select 
-                                id="client_id"
-                                v-model="form.client_id"
-                                class="form-select"
-                                :class="{ 'error': errors.client_id, 'has-value': form.client_id }"
-                                required
-                            >
-                                <option value="" disabled>-- Choose a client --</option>
-                                <option v-for="client in clients" :key="client.id" :value="client.id">
-                                    {{ client.organization_name || client.name }}
-                                </option>
-                            </select>
-                            <span class="select-arrow">▼</span>
-                        </div>
-                        <span v-if="errors.client_id" class="error-message">
-                            {{ errors.client_id }}
-                        </span>
-                    </div>
-
-                    <!-- Ticket Type Dropdown with icons -->
-                    <div class="form-group dropdown-enhanced">
-                        <label for="ticket_type" class="form-label">
-                            Ticket Type <span class="required-star">*</span>
-                            <span class="field-description">What kind of ticket is this?</span>
-                        </label>
-                        <div class="select-wrapper">
-                            <select 
-                                id="ticket_type"
-                                v-model="form.ticket_type"
-                                class="form-select"
-                                :class="{ 'error': errors.ticket_type, 'has-value': form.ticket_type }"
-                                required
-                            >
-                                <option value="" disabled>-- Select ticket type --</option>
-                                <option value="support_issue">🔧 Support Issue</option>
-                                <option value="feature_request">✨ Feature Request</option>
-                                <option value="bug">🐛 Bug</option>
-                                <option value="billing">💰 Billing</option>
-                                <option value="deployment">🚀 Deployment</option>
-                                <option value="other">📋 Other</option>
-                            </select>
-                            <span class="select-arrow">▼</span>
-                        </div>
-                        <span v-if="errors.ticket_type" class="error-message">
-                            {{ errors.ticket_type }}
-                        </span>
-                    </div>
-
-                    <!-- Priority Dropdown with visual indicators -->
-                    <div class="form-group dropdown-enhanced">
-                        <label for="priority" class="form-label">
-                            Priority <span class="required-star">*</span>
-                            <span class="field-description">Set the urgency level</span>
-                        </label>
-                        <div class="select-wrapper">
-                            <select 
-                                id="priority"
-                                v-model="form.priority"
-                                class="form-select"
-                                :class="{ 
-                                    'error': errors.priority,
-                                    'priority-low': form.priority === 'low',
-                                    'priority-medium': form.priority === 'medium',
-                                    'priority-high': form.priority === 'high',
-                                    'priority-critical': form.priority === 'critical'
-                                }"
-                                required
-                            >
-                                <option value="" disabled>-- Set priority --</option>
-                                <option value="low">🟢 Low</option>
-                                <option value="medium">🟡 Medium</option>
-                                <option value="high">🟠 High</option>
-                                <option value="critical">🔴 Critical</option>
-                            </select>
-                            <span class="select-arrow">▼</span>
-                        </div>
-                        <span v-if="errors.priority" class="error-message">
-                            {{ errors.priority }}
-                        </span>
-                    </div>
-
-                    <!-- Title and Description fields remain the same -->
-                    <div class="form-group">
-                        <label for="title" class="form-label">Title *</label>
-                        <input 
-                            type="text" 
-                            id="title"
-                            v-model="form.title"
-                            class="form-input"
-                            :class="{ 'error': errors.title }"
-                            placeholder="Brief summary of the issue"
-                            required
-                        >
-                        <span v-if="errors.title" class="error-message">
-                            {{ errors.title }}
-                        </span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description" class="form-label">Description *</label>
-                        <textarea 
-                            id="description"
-                            v-model="form.description"
-                            class="form-textarea"
-                            :class="{ 'error': errors.description }"
-                            rows="4"
-                            placeholder="Detailed description of the ticket..."
-                            required
-                        ></textarea>
-                        <span v-if="errors.description" class="error-message">
-                            {{ errors.description }}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Right Column -->
-                <div class="form-right">
-                    <!-- Status dropdown (edit only) with visual styling -->
-                    <div v-if="isEdit" class="form-group dropdown-enhanced">
-                        <label for="status" class="form-label">
-                            Status *
-                            <span class="field-description">Current ticket status</span>
-                        </label>
-                        <div class="select-wrapper">
-                            <select 
-                                id="status"
-                                v-model="form.status"
-                                class="form-select"
-                                :class="{ 
-                                    'error': errors.status,
-                                    'status-new': form.status === 'new',
-                                    'status-progress': form.status === 'in_progress',
-                                    'status-waiting': form.status === 'waiting_for_client',
-                                    'status-resolved': form.status === 'resolved',
-                                    'status-closed': form.status === 'closed',
-                                    'status-rejected': form.status === 'rejected'
-                                }"
-                                required
-                            >
-                                <option value="" disabled>-- Select status --</option>
-                                <option value="new">🆕 New</option>
-                                <option value="in_progress">⚡ In Progress</option>
-                                <option value="waiting_for_client">⏳ Waiting for Client</option>
-                                <option value="resolved">✅ Resolved</option>
-                                <option value="closed">🔒 Closed</option>
-                                <option value="rejected">❌ Rejected</option>
-                            </select>
-                            <span class="select-arrow">▼</span>
-                        </div>
-                        <span v-if="errors.status" class="error-message">
-                            {{ errors.status }}
-                        </span>
-                    </div>
-
-                    <!-- Assign To dropdown with user avatars (if available) -->
-                    <div class="form-group dropdown-enhanced">
-                        <label for="assigned_to_user_id" class="form-label">
-                            Assign To
-                            <span class="field-description">Team member responsible</span>
-                        </label>
-                        <div class="select-wrapper">
-                            <select 
-                                id="assigned_to_user_id"
-                                v-model="form.assigned_to_user_id"
-                                class="form-select"
-                                :class="{ 'error': errors.assigned_to_user_id, 'has-value': form.assigned_to_user_id }"
-                            >
-                                <option :value="null">👤 Unassigned</option>
-                                <option v-for="user in users" :key="user.id" :value="user.id">
-                                    👤 {{ user.name }}
-                                </option>
-                            </select>
-                            <span class="select-arrow">▼</span>
-                        </div>
-                        <span v-if="errors.assigned_to_user_id" class="error-message">
-                            {{ errors.assigned_to_user_id }}
-                        </span>
-                    </div>
-
-                    <!-- Due Date field with validation -->
-                    <div class="form-group">
-                        <label for="due_date" class="form-label">
-                            Due Date
-                            <span class="field-description">Expected completion date</span>
-                        </label>
-                        <input 
-                            type="date" 
-                            id="due_date"
-                            v-model="form.due_date"
-                            class="form-input"
-                            :class="{ 'error': errors.due_date }"
-                            :min="today"
-                        >
-                        <span v-if="errors.due_date" class="error-message">
-                            {{ errors.due_date }}
-                        </span>
-                    </div>
-
-                    <!-- Read-only fields remain the same -->
-                    <div v-if="isEdit" class="readonly-fields">
-                        <div class="form-group">
-                            <label class="form-label">Ticket Number</label>
-                            <input 
-                                type="text" 
-                                :value="ticket.ticket_number"
-                                class="form-input readonly"
-                                readonly
-                            >
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Created By</label>
-                            <input 
-                                type="text" 
-                                :value="ticket.created_by?.name || 'N/A'"
-                                class="form-input readonly"
-                                readonly
-                            >
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Created At</label>
-                            <input 
-                                type="text" 
-                                :value="formatDate(ticket.created_at)"
-                                class="form-input readonly"
-                                readonly
-                            >
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Last Updated</label>
-                            <input 
-                                type="text" 
-                                :value="formatDate(ticket.updated_at)"
-                                class="form-input readonly"
-                                readonly
-                            >
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form Actions -->
-            <div class="form-actions">
-                <button type="submit" class="btn-submit" :disabled="loading">
-                    <span v-if="loading" class="spinner"></span>
-                    {{ isEdit ? 'Update Ticket' : 'Create Ticket' }}
-                </button>
-                <button type="button" @click="cancel" class="btn-cancel-form">
-                    Cancel
-                </button>
-            </div>
-        </form>
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn-submit" :disabled="loading">
+            <span v-if="loading" class="spinner"></span>
+            {{ isEdit ? 'Update Ticket' : 'Create Ticket' }}
+          </button>
+          <button type="button" @click="cancel" class="btn-cancel-form">
+            Cancel
+          </button>
+        </div>
+      </form>
     </div>
+  </AuthenticatedLayout>
 </template>
 
 <script>
 import { router } from '@inertiajs/vue3'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 export default {
-    name: 'TicketForm',
-    
-    props: {
-        ticket: {
-            type: Object,
-            default: () => ({})
-        },
-        isEdit: {
-            type: Boolean,
-            default: false
-        },
-        clients: {
-            type: Array,
-            required: true
-        },
-        users: {
-            type: Array,
-            required: true
-        }
-    },
-
-    data() {
-        return {
-            form: this.getInitialForm(),
-            errors: {},
-            loading: false,
-            today: new Date().toISOString().split('T')[0]
-        }
-    },
-
-    mounted() {
-        if (this.isEdit && this.ticket) {
-            this.populateForm();
-        }
-        
-        // Debug: Log clients to verify they're received
-        console.log('Clients received:', this.clients);
-        console.log('Users received:', this.users);
-    },
-
-    methods: {
-        getInitialForm() {
-            const baseForm = {
-                client_id: '',
-                ticket_type: '',
-                title: '',
-                description: '',
-                priority: 'medium',
-                assigned_to_user_id: null,
-                due_date: '',
-            };
-
-            if (this.isEdit) {
-                baseForm.status = '';
-            }
-
-            return baseForm;
-        },
-
-        populateForm() {
-            this.form = {
-                client_id: this.ticket.client_id,
-                ticket_type: this.ticket.ticket_type,
-                title: this.ticket.title,
-                description: this.ticket.description || '',
-                priority: this.ticket.priority,
-                status: this.ticket.status,
-                assigned_to_user_id: this.ticket.assigned_to_user_id || null,
-                due_date: this.ticket.due_date || '',
-            };
-        },
-
-        async submitForm() {
-            this.loading = true;
-            this.errors = {};
-
-            try {
-                if (this.isEdit) {
-                    // For edit, only send updatable fields
-                    const updateData = {
-                        status: this.form.status,
-                        priority: this.form.priority,
-                        assigned_to_user_id: this.form.assigned_to_user_id,
-                        due_date: this.form.due_date,
-                    };
-                    
-                    await router.put(`/tickets/${this.ticket.id}`, updateData);
-                    this.showSuccess('Ticket updated successfully');
-                } else {
-                    await router.post('/tickets', this.form);
-                    this.showSuccess('Ticket created successfully');
-                }
-                
-                // Redirect to index
-                router.visit('/tickets');
-            } catch (error) {
-                this.loading = false;
-                
-                if (error.response && error.response.status === 422) {
-                    this.errors = error.response.data.errors;
-                } else {
-                    this.showError('An error occurred. Please try again.');
-                }
-            }
-        },
-
-        cancel() {
-            router.visit('/tickets');
-        },
-
-        formatDate(date) {
-            if (!date) return 'N/A';
-            return new Date(date).toLocaleString();
-        },
-
-        showSuccess(message) {
-            alert(message);
-        },
-
-        showError(message) {
-            alert(message);
-        }
+  name: 'TicketForm',
+  components: {
+    AuthenticatedLayout
+  },
+  props: {
+    ticket: Object,
+    isEdit: Boolean,
+    clients: Array,
+    users: Array
+  },
+  data() {
+    return {
+      form: this.getInitialForm(),
+      errors: {},
+      loading: false,
+      today: new Date().toISOString().split('T')[0]
     }
+  },
+  mounted() {
+    if (this.isEdit && this.ticket) this.populateForm()
+  },
+  methods: {
+    getInitialForm() {
+      const base = { client_id: '', ticket_type: '', title: '', description: '', priority: 'medium', assigned_to_user_id: null, due_date: '', is_active: true }
+      if (this.isEdit) base.status = ''
+      return base
+    },
+    populateForm() {
+      this.form = { ...this.ticket, assigned_to_user_id: this.ticket.assigned_to_user_id || null, is_active: this.ticket.is_active ?? true }
+    },
+    async submitForm() { /* keep your existing submitForm logic */ },
+    cancel() { router.visit('/tickets') },
+    formatDate(date) { return date ? new Date(date).toLocaleDateString() : 'N/A' }
+  }
 }
 </script>
 
 <style scoped>
-/* Keep your existing styles and add these enhanced dropdown styles */
+/* Keep your existing styles and add these new active toggle styles */
+
+/* Active Toggle Styles */
+.active-toggle-container {
+    background: #f8faf8;
+    border-radius: 12px;
+    padding: 16px;
+    border: 2px solid #e0e8e0;
+    transition: all 0.3s ease;
+}
+
+.active-toggle-container:has(.active-checkbox:checked) {
+    border-color: #2c5e2c;
+    background: #f0fff0;
+}
+
+.active-toggle-container:has(.active-checkbox:not(:checked)) {
+    border-color: #dc3545;
+    background: #fff5f5;
+}
+
+.active-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.active-checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* Custom toggle switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+    background-color: #dc3545;
+    border-radius: 13px;
+    transition: all 0.3s ease;
+}
+
+.toggle-switch:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-switch.active {
+    background-color: #2c5e2c;
+}
+
+.toggle-switch.active:before {
+    transform: translateX(24px);
+}
+
+/* Status text with dot */
+.toggle-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.active-text {
+    color: #2c5e2c;
+}
+
+.inactive-text {
+    color: #dc3545;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.active-dot {
+    background-color: #2c5e2c;
+    box-shadow: 0 0 8px #2c5e2c;
+}
+
+.inactive-dot {
+    background-color: #dc3545;
+    box-shadow: 0 0 8px #dc3545;
+}
+
+/* Description text */
+.toggle-description {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e0e8e0;
+    font-size: 13px;
+    transition: all 0.3s ease;
+}
+
+.active-desc {
+    color: #2c5e2c;
+}
+
+.inactive-desc {
+    color: #dc3545;
+}
+
+/* Hover effects */
+.active-toggle-label:hover .toggle-switch {
+    transform: scale(1.05);
+}
+
+.active-toggle-label:hover .toggle-switch.active {
+    box-shadow: 0 0 8px #2c5e2c;
+}
+
+.active-toggle-label:hover .toggle-switch:not(.active) {
+    box-shadow: 0 0 8px #dc3545;
+}
+
+/* Keep all your existing styles below */
 
 /* Enhanced Dropdown Styling */
 .dropdown-enhanced {
@@ -526,19 +501,7 @@ export default {
     border-left-width: 4px;
 }
 
-/* Responsive improvements */
-@media (max-width: 768px) {
-    .form-select {
-        font-size: 16px; /* Prevents zoom on mobile */
-        padding: 14px 40px 14px 16px;
-    }
-    
-    .field-description {
-        font-size: 11px;
-    }
-}
-
-/* Keep all your existing styles from before */
+/* Form Container Styles */
 .ticket-form-container {
     padding: 24px;
     background: #f0f7f0;
@@ -711,6 +674,7 @@ export default {
     to { transform: rotate(360deg); }
 }
 
+/* Responsive improvements */
 @media (max-width: 768px) {
     .form-grid {
         grid-template-columns: 1fr;
@@ -723,6 +687,15 @@ export default {
     .btn-submit,
     .btn-cancel-form {
         width: 100%;
+    }
+    
+    .form-select {
+        font-size: 16px; /* Prevents zoom on mobile */
+        padding: 14px 40px 14px 16px;
+    }
+    
+    .field-description {
+        font-size: 11px;
     }
 }
 </style>

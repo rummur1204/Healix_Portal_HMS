@@ -20,8 +20,12 @@ class TicketHistory extends Model
         return $this->belongsTo(Ticket::class);
     }
 
-    public function changedBy()
-    {
-        return $this->belongsTo(User::class, 'changed_by_user_id');
-    }
+    
+
+public function madeBy()
+{
+    // The column in ticket_history table that stores who made the change
+    return $this->belongsTo(User::class, 'changed_by_user_id');
+}
+ 
 }

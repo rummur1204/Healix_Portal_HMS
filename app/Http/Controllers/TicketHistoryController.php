@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\TicketHistory;
+use App\Models\User; // ✅ import User here
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -18,8 +20,12 @@ class TicketHistoryController extends Controller
             ->paginate($request->get('per_page', 15))
             ->withQueryString();
 
+        // Pass all users for ID -> name mapping
+        $users = User::select('id', 'name')->get();
+
         return Inertia::render('Tickets/History', [
-            'history' => $history
+            'history' => $history,
+            'users' => $users
         ]);
     }
 
