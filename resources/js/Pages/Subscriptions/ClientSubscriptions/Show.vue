@@ -42,22 +42,8 @@
                     
                     <!-- Action Buttons -->
                     <div class="flex items-center space-x-3">
-                        <Link
-                            :href="`/subscriptions/subscription/${subscription?.id}/edit`"
-                            v-if="can?.edit"
-                            class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-sm transition-all flex items-center space-x-2"
-                        >
-                            <PencilIcon class="w-5 h-5" />
-                            <span>Edit</span>
-                        </Link>
-                        <button
-                            @click="confirmDelete"
-                            v-if="can?.delete"
-                            class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-white rounded-lg backdrop-blur-sm transition-all flex items-center space-x-2"
-                        >
-                            <TrashIcon class="w-5 h-5" />
-                            <span>Delete</span>
-                        </button>
+                        
+                        
                         <button 
                             v-if="can?.cancel && ['active', 'trial'].includes(subscription?.status)"
                             @click="confirmCancel"
@@ -89,7 +75,7 @@
                         </div>
                         <div class="text-right">
                             <p class="text-white/80 text-sm">Plan Price</p>
-                            <p class="text-white font-bold text-xl">${{ subscription?.plan?.price }}</p>
+                            <p class="text-white font-bold text-xl">${{ subscription?.plan?.price || 0 }}</p>
                         </div>
                     </div>
                 </div>
@@ -252,18 +238,21 @@
                             </h3>
                         </div>
                         <div class="p-6 space-y-3">
+                            <!-- Process Renewal button - FIXED -->
                             <button 
                                 v-if="can?.process_renewal && subscription?.status === 'active'"
                                 @click="processRenewal"
-                                class="w-full flex items-center justify-between p-3 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/30 rounded-lg transition-colors group"
+                                :disabled="processingRenewal"
+                                class="w-full flex items-center justify-between p-3 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/30 rounded-lg transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span class="flex items-center text-teal-700 dark:text-teal-400">
-                                    <ArrowPathIcon class="w-5 h-5 mr-2" />
-                                    Process Renewal
+                                    <ArrowPathIcon class="w-5 h-5 mr-2" :class="{ 'animate-spin': processingRenewal }" />
+                                    {{ processingRenewal ? 'Processing...' : 'Process Renewal' }}
                                 </span>
                                 <ArrowRightIcon class="w-4 h-4 text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                             
+                            <!-- Suspend button - for active subscriptions -->
                             <button 
                                 v-if="can?.suspend && subscription?.status === 'active'"
                                 @click="confirmSuspend"
@@ -276,6 +265,7 @@
                                 <ArrowRightIcon class="w-4 h-4 text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                             
+                            <!-- Reactivate button - for suspended subscriptions -->
                             <button 
                                 v-if="can?.reactivate && subscription?.status === 'suspended'"
                                 @click="reactivateSubscription"
@@ -288,6 +278,7 @@
                                 <ArrowRightIcon class="w-4 h-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
 
+                            <!-- Change Plan button -->
                             <button 
                                 v-if="can?.upgrade_downgrade"
                                 @click="showChangePlanModal = true"
@@ -299,10 +290,36 @@
                                 </span>
                                 <ArrowRightIcon class="w-4 h-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
+
+                            <!-- Record Payment button (alternative) -->
+                            <button 
+                                v-if="can?.record_payment"
+                                @click="showPaymentModal = true"
+                                class="w-full flex items-center justify-between p-3 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 rounded-lg transition-colors group"
+                            >
+                                <span class="flex items-center text-purple-700 dark:text-purple-400">
+                                    <CurrencyDollarIcon class="w-5 h-5 mr-2" />
+                                    Record Payment
+                                </span>
+                                <ArrowRightIcon class="w-4 h-4 text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+
+                            <!-- Cancel button (alternative) -->
+                            <button 
+                                v-if="can?.cancel && ['active', 'trial'].includes(subscription?.status)"
+                                @click="confirmCancel"
+                                class="w-full flex items-center justify-between p-3 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 rounded-lg transition-colors group"
+                            >
+                                <span class="flex items-center text-red-700 dark:text-red-400">
+                                    <XCircleIcon class="w-5 h-5 mr-2" />
+                                    Cancel Subscription
+                                </span>
+                                <ArrowRightIcon class="w-4 h-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
                         </div>
                     </div>
 
-                    <!-- History Timeline (FR-SUB-04) -->
+                    <!-- History Timeline -->
                     <div class="bg-white dark:bg-black rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
                         <div class="p-6 border-b border-gray-200 dark:border-gray-800">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
@@ -353,7 +370,7 @@
             </div>
         </div>
 
-        <!-- Payment Modal (FIXED) -->
+        <!-- Payment Modal -->
         <Modal :show="showPaymentModal" @close="showPaymentModal = false">
             <div class="p-6 bg-white dark:bg-black">
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Record Payment</h3>
@@ -639,11 +656,12 @@ const showChangePlanModal = ref(false)
 const cancelReason = ref('')
 const cancelReasonText = ref('')
 const suspendReason = ref('')
+const processingRenewal = ref(false)
 
 // Available plans for change
 const availablePlans = ref([])
 
-// Payment form (FIXED: added subscription_id)
+// Payment form
 const paymentForm = useForm({
     subscription_id: props.subscription?.id,
     amount: props.subscription?.plan?.price || '',
@@ -768,6 +786,9 @@ const getActionLabel = (action) => {
         reactivated: 'Subscription reactivated',
         status_changed: 'Status changed',
         payment_received: 'Payment received',
+        assigned: 'Subscription assigned',
+        activated: 'Subscription activated',
+        deleted: 'Subscription deleted'
     }
     return map[action] || action
 }
@@ -783,6 +804,9 @@ const getTimelineDotColor = (action) => {
         reactivated: 'bg-green-500',
         status_changed: 'bg-blue-500',
         payment_received: 'bg-teal-500',
+        assigned: 'bg-blue-500',
+        activated: 'bg-green-500',
+        deleted: 'bg-red-500'
     }
     return map[action] || 'bg-gray-500'
 }
@@ -802,6 +826,10 @@ const cancelSubscription = () => {
             showCancelModal.value = false
             cancelReason.value = ''
             cancelReasonText.value = ''
+            // Refresh the page data
+            router.reload({
+                only: ['subscription']
+            })
         }
     })
 }
@@ -817,6 +845,10 @@ const suspendSubscription = () => {
         onSuccess: () => {
             showSuspendModal.value = false
             suspendReason.value = ''
+            // Refresh the page data
+            router.reload({
+                only: ['subscription']
+            })
         }
     })
 }
@@ -837,19 +869,49 @@ const deleteSubscription = () => {
 const reactivateSubscription = () => {
     router.put(`/subscriptions/subscription/${props.subscription?.id}/reactivate`, {}, {
         onSuccess: () => {
-            // Show success message
+            // Refresh the page data
+            router.reload({
+                only: ['subscription']
+            })
         }
     })
 }
 
+// FIXED: Process renewal function with proper Inertia handling
 const processRenewal = () => {
-    if (confirm('Process renewal for this subscription?')) {
-        router.post(`/subscriptions/renewals/${props.subscription?.id}/process`, {}, {
-            onSuccess: () => {
-                // Show success message
+    if (!confirm('Process renewal for this subscription?')) return
+    
+    processingRenewal.value = true
+    
+    router.post(`/subscriptions/renewals/${props.subscription?.id}/process`, {}, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: (page) => {
+            console.log('Renewal processed successfully', page)
+            processingRenewal.value = false
+            // Refresh the page data
+            router.reload({
+                only: ['subscription'],
+                onSuccess: () => {
+                    alert('Renewal processed successfully!')
+                }
+            })
+        },
+        onError: (errors) => {
+            console.error('Failed to process renewal:', errors)
+            processingRenewal.value = false
+            let errorMessage = 'Failed to process renewal'
+            if (errors && typeof errors === 'object') {
+                const firstError = Object.values(errors)[0]
+                if (Array.isArray(firstError)) {
+                    errorMessage = firstError[0]
+                } else if (typeof firstError === 'string') {
+                    errorMessage = firstError
+                }
             }
-        })
-    }
+            alert(errorMessage)
+        }
+    })
 }
 
 // FIXED: Record payment function with proper error handling
@@ -868,7 +930,6 @@ const recordPayment = () => {
             router.reload({
                 only: ['subscription'],
                 onSuccess: () => {
-                    // You can add a toast notification here if you have one
                     alert('Payment recorded successfully!')
                 }
             })
@@ -876,10 +937,6 @@ const recordPayment = () => {
         onError: (errors) => {
             console.error('Payment error:', errors)
             // Error is already displayed in the form
-        },
-        onFinish: () => {
-            // Reset processing state
-            paymentForm.processing = false
         }
     })
 }
@@ -900,6 +957,9 @@ const changePlan = () => {
     router.post(`/subscriptions/subscription/${props.subscription?.id}/change-plan`, changePlanForm.value, {
         onSuccess: () => {
             showChangePlanModal.value = false
+            router.reload({
+                only: ['subscription']
+            })
         }
     })
 }
