@@ -7,11 +7,12 @@ class Ticket extends Model
 {
     protected $fillable = [
         'ticket_number', 'client_id', 'ticket_type', 'title', 'description',
-        'priority', 'status', 'assigned_to_user_id', 'due_date', 'created_by_user_id'
+        'priority', 'status', 'assigned_to_user_id', 'due_date', 'created_by_user_id', 'active' // ✅ 
     ];
 
     protected $casts = [
-        'due_date' => 'date'
+        'due_date' => 'date',
+        'active' => 'boolean' 
     ];
 
     protected static function boot()
@@ -20,9 +21,13 @@ class Ticket extends Model
         
         static::creating(function ($ticket) {
             $ticket->ticket_number = 'TKT-' . strtoupper(uniqid());
+            $ticket->active = true; // ✅
         });
     }
-
+     public function attachments()
+    {
+        return $this->hasMany(TicketAttachment::class);
+    } 
     public function client()
     {
         return $this->belongsTo(Client::class);
@@ -48,10 +53,7 @@ class Ticket extends Model
         return $this->hasMany(TicketComment::class)->latest();
     }
 
-    public function attachments()
-    {
-        return $this->hasMany(TicketAttachment::class);
-    }
+    
 
     public function history()
     {
@@ -67,4 +69,12 @@ class Ticket extends Model
     {
         return $this->hasOne(SlaTracking::class);
     }
+    // app/Models/Ticket.php
+
+
+public function histories()
+{
+    return $this->hasMany(TicketHistory::class);
+}
+
 }
