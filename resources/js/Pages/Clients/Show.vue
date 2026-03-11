@@ -174,6 +174,8 @@ No notes yet.
 
 </div>
 
+
+
 <!-- ================= TECH INFO TAB (UNCHANGED) ================= -->
 <div v-if="activeTab === 'Tech Info'">
 
@@ -388,8 +390,226 @@ Cancel
 
 </div>
 
+<!-- ================= DOCS TAB ================= -->
+<div v-if="activeTab === 'Docs'">
+
+<div class="flex justify-between mb-6">
+
+<h4 class="font-semibold text-lg">
+Client Documents
+</h4>
+
+<button
+@click="showUpload = !showUpload"
+class="bg-teal-600 text-white px-4 py-2 rounded"
+>
+Upload Document
+</button>
 
 </div>
+
+<!-- Upload Form -->
+
+<div v-if="showUpload" class="border p-4 rounded mb-6">
+
+<form @submit.prevent="uploadDoc" class="space-y-4">
+
+<div>
+<label class="block text-sm font-medium">File Name</label>
+<input v-model="docForm.file_name" class="input"/>
+</div>
+
+<div>
+<label class="block text-sm font-medium">Description</label>
+<textarea v-model="docForm.description" class="input"/>
+</div>
+
+<div>
+<label class="block text-sm font-medium">File</label>
+<input type="file" @change="handleFile"/>
+</div>
+
+<button
+type="submit"
+class="bg-blue-600 text-white px-4 py-2 rounded"
+>
+Upload
+</button>
+
+</form>
+
+</div>
+
+<!-- Documents List -->
+
+<!-- <div v-if="client.documents.length === 0" class="text-gray-500">
+No documents uploaded.
+</div> -->
+<div v-if="!client.documents || client.documents.length === 0" class="text-gray-500">
+No documents uploaded.
+</div>
+
+<div
+v-for="doc in client.documents"
+:key="doc.id"
+class="border p-4 rounded mb-3 flex justify-between items-center"
+>
+
+
+<div>
+
+<p class="font-medium">
+{{ doc.file_name }}
+</p>
+
+<p class="text-xs text-gray-500">
+Uploaded by {{ doc.uploaded_by?.name }} • {{ formatDate(doc.created_at) }}
+</p>
+
+</div>
+
+<div class="flex gap-4">
+
+<a
+:href="`/storage/${doc.file_path}`"
+target="_blank"
+class="text-blue-600"
+>
+Download
+</a>
+
+<button
+@click="deleteDoc(doc.id)"
+class="text-red-600"
+>
+Delete
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- ================= TASKS TAB ================= -->
+<div v-if="activeTab === 'Tasks'">
+
+<div class="flex justify-between mb-6">
+<h4 class="font-semibold text-lg">Client Tasks</h4>
+</div>
+
+<!-- Task Form -->
+<form @submit.prevent="saveTask" class="border p-4 rounded mb-6">
+
+<div class="grid grid-cols-2 gap-4">
+
+<div>
+<label class="block text-sm font-medium">Title</label>
+<input v-model="taskForm.title" class="input"/>
+</div>
+
+<div>
+<label class="block text-sm font-medium">Due Date</label>
+<input type="date" v-model="taskForm.due_date" class="input"/>
+</div>
+
+<div>
+<label class="block text-sm font-medium">Assign To</label>
+<select v-model="taskForm.assigned_to_user_id" class="input">
+<option value="">Unassigned</option>
+<option v-for="user in users" :key="user.id" :value="user.id">
+{{ user.name }}
+</option>
+</select>
+</div>
+
+<div>
+<label class="block text-sm font-medium">Reminder</label>
+<input type="datetime-local" v-model="taskForm.reminder_at" class="input"/>
+</div>
+
+<div class="col-span-2">
+<label class="block text-sm font-medium">Description</label>
+<textarea v-model="taskForm.description" class="input"></textarea>
+</div>
+
+</div>
+
+<button class="bg-teal-600 text-white px-4 py-2 rounded mt-4">
+Create Task
+</button>
+
+</form>
+
+
+<!-- Tasks List -->
+
+<div v-if="client.tasks.length === 0" class="text-gray-500">
+No tasks yet.
+</div>
+
+<div
+v-for="task in client.tasks"
+:key="task.id"
+class="border p-4 rounded mb-3 flex justify-between items-center"
+>
+
+<div>
+
+<p class="font-medium">
+{{ task.title }}
+</p>
+
+<p class="text-xs text-gray-500">
+Assigned to {{ task.assigned_to?.name || 'Unassigned' }}
+</p>
+
+<p class="text-xs text-gray-500">
+Due {{ formatDate(task.due_date) }}
+</p>
+
+</div>
+
+<div class="flex gap-4">
+
+<span
+v-if="task.status === 'open'"
+class="text-yellow-600 text-sm font-medium"
+>
+Open
+</span>
+
+<span
+v-if="task.status === 'done'"
+class="text-green-600 text-sm font-medium"
+>
+Done
+</span>
+
+<button
+v-if="task.status === 'open'"
+@click="markDone(task.id)"
+class="text-green-600 text-sm"
+>
+Mark Done
+</button>
+
+<button
+@click="deleteTask(task.id)"
+class="text-red-600 text-sm"
+>
+Delete
+</button>
+
+</div>
+
+</div>
+
+</div>
+</div>
+
+
+
 
 <!-- ================= SIDEBAR ================= -->
 <div class="w-[350px] bg-white dark:bg-primary-900 p-6 rounded-xl shadow">
@@ -421,10 +641,10 @@ class="border-l-2 border-teal-600 pl-4 mb-4"
 
 <script setup>
 import { ref } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { useForm, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
-const props = defineProps({ client: Object })
+const props = defineProps({ client: Object, users:Array })
 
 const tabs = ['Profile', 'Tech Info', 'Tasks', 'Notes', 'Docs']
 const activeTab = ref('Profile')
@@ -531,6 +751,62 @@ onSuccess: () => editingTech.value = false
 }
 
 const yesNo = (val) => val ? 'Yes' : 'No'
+
+
+
+const showUpload = ref(false)
+
+const docForm = useForm({
+file_name: '',
+description: '',
+file: null
+})
+
+const handleFile = (e) => {
+docForm.file = e.target.files[0]
+}
+
+const uploadDoc = () => {
+docForm.post(route('clients.docs.store', props.client.id), {
+forceFormData: true,
+onSuccess: () => {
+showUpload.value = false
+docForm.reset()
+}
+})
+}
+
+const deleteDoc = (id) => {
+
+if(confirm('Delete document?')){
+
+router.delete(route('clients.docs.destroy', id))
+
+}
+
+}
+
+const taskForm = useForm({
+title: '',
+due_date: '',
+description: '',
+assigned_to_user_id: '',
+reminder_at: ''
+})
+
+const saveTask = () => {
+taskForm.post(route('clients.tasks.store', props.client.id), {
+onSuccess: () => taskForm.reset()
+})
+}
+
+const markDone = (id) => {
+router.patch(route('clients.tasks.update', id))
+}
+
+const deleteTask = (id) => {
+router.delete(route('clients.tasks.destroy', id))
+}
 
 
 

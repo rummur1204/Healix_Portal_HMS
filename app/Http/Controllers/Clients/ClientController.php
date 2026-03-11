@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Clients;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Client;
+use App\Models\User;
 use App\Models\ClientStatusHistory;
 use App\Models\ClientTimelineEvent;
 use Illuminate\Support\Facades\DB;
@@ -114,15 +115,22 @@ public function show(Client $client)
         'contacts',
         'technicalInfo',
         'notes.author',
+        'documents.uploadedBy',
+        'tasks.assignedTo',
         'timelineEvents' => function ($query) {
             $query->latest();
         },
     ]);
+$users = User::select('id','name')->get();
 
     return Inertia::render('Clients/Show', [
         'client' => $client,
+        'users' => $users
     ]);
 }
+
+
+
 
 public function update(UpdateClientRequest $request, Client $client)
 {
