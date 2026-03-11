@@ -15,7 +15,7 @@ class ClientNote extends Model
         return $this->belongsTo(Client::class);
     }
 
-    public function createdBy()
+    public function author()
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
     }

@@ -9,7 +9,6 @@ use App\Http\Requests\Subscription\StoreSubscriptionPlanRequest;
 use App\Http\Requests\Subscription\UpdateSubscriptionPlanRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Log;
 
 class SubscriptionPlanController extends Controller
 {
@@ -21,24 +20,12 @@ class SubscriptionPlanController extends Controller
     }
 
     /**
-     * Get plans for the main index page
+     * Check permission helper
      */
-    public function getPlansForIndex()
+    private function checkPermission($permission)
     {
-        try {
-            $plans = SubscriptionPlan::query()
-                ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
-                    $query->whereIn('status', ['active', 'trial']);
-                }])
-                ->orderBy('created_at', 'desc')
-                ->get();
-            
-            Log::info('getPlansForIndex found: ' . $plans->count() . ' plans');
-            
-            return $plans;
-        } catch (\Exception $e) {
-            Log::error('Error in getPlansForIndex: ' . $e->getMessage());
-            return [];
+        if (!auth()->user()->can($permission)) {
+            abort(403, 'Unauthorized');
         }
     }
 
@@ -47,60 +34,54 @@ class SubscriptionPlanController extends Controller
      */
     public function index(Request $request)
     {
-        try {
-            $query = SubscriptionPlan::query()
-                ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
-                    $query->whereIn('status', ['active', 'trial']);
-                }]);
+        $this->checkPermission('view subscription plans');
 
-            // Apply filters
-            if ($request->has('search') && !empty($request->search)) {
-                $query->where('plan_name', 'like', "%{$request->search}%");
-            }
-            
-            if ($request->has('status') && $request->status !== '') {
-                $isActive = $request->status === 'active';
-                $query->where('is_active', $isActive);
-            }
+        $query = SubscriptionPlan::query()
+            ->withCount(['subscriptions as active_subscriptions_count' => function ($query) {
+                $query->whereIn('status', ['active', 'trial']);
+            }]);
 
-            // Apply sorting
-            $sortField = $request->sort ?? 'created_at';
-            $sortDirection = $request->direction ?? 'desc';
-            $query->orderBy($sortField, $sortDirection);
-
-            $plans = $query->paginate($request->per_page ?? 15)->withQueryString();
-
-            // For Inertia requests
-            if ($request->header('X-Inertia')) {
-                return Inertia::render('Subscriptions/Plans/Index', [
-                    'plans' => $plans,
-                    'filters' => $request->only(['search', 'status', 'sort', 'direction']),
-                ]);
-            }
-
-            // For API requests
-            return response()->json([
-                'data' => $plans->items(),
-                'meta' => [
-                    'total' => $plans->total(),
-                    'per_page' => $plans->perPage(),
-                    'current_page' => $plans->currentPage(),
-                    'last_page' => $plans->lastPage(),
-                ]
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error in index: ' . $e->getMessage());
-            
-            if ($request->header('X-Inertia')) {
-                return Inertia::render('Subscriptions/Plans/Index', [
-                    'plans' => ['data' => [], 'meta' => []],
-                    'filters' => $request->only(['search', 'status', 'sort', 'direction']),
-                    'error' => 'Failed to load plans: ' . $e->getMessage()
-                ]);
-            }
-            
-            return response()->json(['error' => $e->getMessage()], 500);
+        // Apply filters
+        if ($request->has('search') && !empty($request->search)) {
+            $query->where('plan_name', 'like', "%{$request->search}%");
         }
+        
+        if ($request->has('status') && $request->status !== '') {
+            $isActive = $request->status === 'active';
+            $query->where('is_active', $isActive);
+        }
+
+        // Apply sorting
+        $sortField = $request->sort ?? 'created_at';
+        $sortDirection = $request->direction ?? 'desc';
+        $query->orderBy($sortField, $sortDirection);
+
+        // Check if it's an API request (from fetch in Vue)
+        if ($request->wantsJson() || $request->ajax()) {
+            $plans = $query->get(); // Return all for API
+            return response()->json([
+                'data' => $plans
+            ]);
+        }
+
+        // For Inertia requests, return paginated data
+        $plans = $query->paginate($request->per_page ?? 15)->withQueryString();
+
+        return Inertia::render('Subscriptions/Plans/Index', [
+            'plans' => $plans,
+            'filters' => $request->only(['search', 'status', 'sort', 'direction']),
+            'billingCycles' => [
+                'monthly' => 'Monthly',
+                'quarterly' => 'Quarterly',
+                'yearly' => 'Yearly',
+                'custom' => 'Custom',
+            ],
+            'can' => [
+                'create' => auth()->user()->can('create subscription plans'),
+                'edit' => auth()->user()->can('edit subscription plans'),
+                'delete' => auth()->user()->can('delete subscription plans'),
+            ]
+        ]);
     }
 
     /**
@@ -108,16 +89,32 @@ class SubscriptionPlanController extends Controller
      */
     public function activePlans(Request $request)
     {
-        try {
-            $plans = SubscriptionPlan::where('is_active', true)
-                ->orderBy('plan_name')
-                ->get(['id', 'plan_name', 'price', 'billing_cycle', 'trial_days']);
-            
-            return response()->json($plans);
-        } catch (\Exception $e) {
-            Log::error('Error in activePlans: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        $plans = SubscriptionPlan::where('is_active', true)
+            ->orderBy('plan_name')
+            ->get(['id', 'plan_name', 'price', 'billing_cycle', 'trial_days']);
+        
+        return response()->json($plans);
+    }
+
+    /**
+     * Show create form
+     */
+    public function create()
+    {
+        $this->checkPermission('create subscription plans');
+
+        return Inertia::render('Subscriptions/Plans/Form', [
+            'billingCycles' => [
+                ['value' => 'monthly', 'label' => 'Monthly'],
+                ['value' => 'quarterly', 'label' => 'Quarterly'],
+                ['value' => 'yearly', 'label' => 'Yearly'],
+                ['value' => 'custom', 'label' => 'Custom'],
+            ],
+            'supportLevels' => [
+                ['value' => 'standard', 'label' => 'Standard'],
+                ['value' => 'premium', 'label' => 'Premium'],
+            ]
+        ]);
     }
 
     /**
@@ -125,48 +122,22 @@ class SubscriptionPlanController extends Controller
      */
     public function store(StoreSubscriptionPlanRequest $request)
     {
-        try {
-            $validatedData = $request->validated();
-            
-            // Ensure boolean values are properly cast
-            $validatedData['is_active'] = isset($validatedData['is_active']) ? filter_var($validatedData['is_active'], FILTER_VALIDATE_BOOLEAN) : true;
-            
-            // Add created_by_user_id from authenticated user
-            $validatedData['created_by_user_id'] = auth()->id();
-            
-            $plan = $this->subscriptionService->createPlan($validatedData);
-            
-            // Load the active_subscriptions_count
-            $plan->loadCount(['subscriptions as active_subscriptions_count' => function ($query) {
-                $query->whereIn('status', ['active', 'trial']);
-            }]);
+        $this->checkPermission('create subscription plans');
 
-            // For Inertia requests
-            if ($request->header('X-Inertia')) {
-                return redirect()->route('subscriptions.index')
-                    ->with('success', 'Subscription plan created successfully.');
-            }
+        $plan = $this->subscriptionService->createPlan($request->validated());
+        
+        // Load the active_subscriptions_count
+        $plan->loadCount(['subscriptions as active_subscriptions_count' => function ($query) {
+            $query->whereIn('status', ['active', 'trial']);
+        }]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Plan created successfully',
-                'plan' => $plan
-            ]);
-                
-        } catch (\Exception $e) {
-            Log::error('Error creating plan: ' . $e->getMessage());
-            
-            if ($request->header('X-Inertia')) {
-                return redirect()->back()
-                    ->with('error', 'Failed to create plan: ' . $e->getMessage())
-                    ->withInput();
-            }
-            
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
+        // Check if it's an API request (from fetch in Vue)
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($plan, 201);
         }
+
+        return redirect()->route('subscriptions.plans.index')
+            ->with('success', 'Subscription plan created successfully.');
     }
 
     /**
@@ -174,36 +145,42 @@ class SubscriptionPlanController extends Controller
      */
     public function show(Request $request, SubscriptionPlan $subscriptionPlan)
     {
-        try {
-            $subscriptionPlan->load([
-                'subscriptions' => function ($query) {
-                    $query->with('client')
-                        ->latest()
-                        ->limit(10);
-                }
-            ]);
-            
-            $subscriptionPlan->loadCount(['subscriptions as active_subscriptions_count' => function ($query) {
-                $query->whereIn('status', ['active', 'trial']);
-            }]);
+        $this->checkPermission('view subscription plans');
 
-            if ($request->header('X-Inertia')) {
-                return Inertia::render('Subscriptions/Plans/Show', [
-                    'plan' => $subscriptionPlan,
-                ]);
-            }
+        $subscriptionPlan->load(['subscriptions' => function ($query) {
+            $query->with('client')->latest()->limit(10);
+        }]);
 
+        // Check if it's an API request (from fetch in Vue)
+        if ($request->wantsJson() || $request->ajax()) {
             return response()->json($subscriptionPlan);
-        } catch (\Exception $e) {
-            Log::error('Error in show: ' . $e->getMessage());
-            
-            if ($request->header('X-Inertia')) {
-                return redirect()->route('subscriptions.index')
-                    ->with('error', 'Failed to load plan: ' . $e->getMessage());
-            }
-            
-            return response()->json(['error' => $e->getMessage()], 500);
         }
+
+        return Inertia::render('Subscriptions/Plans/Show', [
+            'plan' => $subscriptionPlan,
+        ]);
+    }
+
+    /**
+     * Show edit form
+     */
+    public function edit(SubscriptionPlan $subscriptionPlan)
+    {
+        $this->checkPermission('edit subscription plans');
+
+        return Inertia::render('Subscriptions/Plans/Form', [
+            'plan' => $subscriptionPlan,
+            'billingCycles' => [
+                ['value' => 'monthly', 'label' => 'Monthly'],
+                ['value' => 'quarterly', 'label' => 'Quarterly'],
+                ['value' => 'yearly', 'label' => 'Yearly'],
+                ['value' => 'custom', 'label' => 'Custom'],
+            ],
+            'supportLevels' => [
+                ['value' => 'standard', 'label' => 'Standard'],
+                ['value' => 'premium', 'label' => 'Premium'],
+            ]
+        ]);
     }
 
     /**
@@ -211,45 +188,22 @@ class SubscriptionPlanController extends Controller
      */
     public function update(UpdateSubscriptionPlanRequest $request, SubscriptionPlan $subscriptionPlan)
     {
-        try {
-            $validatedData = $request->validated();
-            
-            // Ensure boolean values are properly cast
-            if (isset($validatedData['is_active'])) {
-                $validatedData['is_active'] = filter_var($validatedData['is_active'], FILTER_VALIDATE_BOOLEAN);
-            }
-            
-            $plan = $this->subscriptionService->updatePlan($subscriptionPlan->id, $validatedData);
-            
-            $plan->loadCount(['subscriptions as active_subscriptions_count' => function ($query) {
-                $query->whereIn('status', ['active', 'trial']);
-            }]);
+        $this->checkPermission('edit subscription plans');
 
-            if ($request->header('X-Inertia')) {
-                return redirect()->route('subscriptions.index')
-                    ->with('success', 'Subscription plan updated successfully.');
-            }
+        $plan = $this->subscriptionService->updatePlan($subscriptionPlan->id, $request->validated());
+        
+        // Load the active_subscriptions_count
+        $plan->loadCount(['subscriptions as active_subscriptions_count' => function ($query) {
+            $query->whereIn('status', ['active', 'trial']);
+        }]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Plan updated successfully',
-                'plan' => $plan
-            ]);
-                
-        } catch (\Exception $e) {
-            Log::error('Error updating plan: ' . $e->getMessage());
-            
-            if ($request->header('X-Inertia')) {
-                return redirect()->back()
-                    ->with('error', 'Failed to update plan: ' . $e->getMessage())
-                    ->withInput();
-            }
-            
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
+        // Check if it's an API request (from fetch in Vue)
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($plan);
         }
+
+        return redirect()->route('subscriptions.plans.show', $plan->id)
+            ->with('success', 'Subscription plan updated successfully.');
     }
 
     /**
@@ -257,62 +211,55 @@ class SubscriptionPlanController extends Controller
      */
     public function destroy(Request $request, SubscriptionPlan $subscriptionPlan)
     {
+        $this->checkPermission('delete subscription plans');
+
         try {
             $this->subscriptionService->deletePlan($subscriptionPlan->id);
             
-            if ($request->header('X-Inertia')) {
-                return redirect()->route('subscriptions.index')
-                    ->with('success', 'Subscription plan deleted successfully.');
+            // Check if it's an API request (from fetch in Vue)
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['message' => 'Plan deleted successfully']);
             }
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Plan deleted successfully'
-            ]);
+            return redirect()->route('subscriptions.plans.index')
+                ->with('success', 'Subscription plan deleted successfully.');
         } catch (\Exception $e) {
-            Log::error('Error deleting plan: ' . $e->getMessage());
-            
-            if ($request->header('X-Inertia')) {
-                return redirect()->route('subscriptions.index')
-                    ->with('error', $e->getMessage());
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['error' => $e->getMessage()], 500);
             }
             
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
+            return redirect()->route('subscriptions.plans.index')
+                ->with('error', $e->getMessage());
         }
     }
 
     /**
      * Toggle plan active status
      */
-    public function toggleStatus(Request $request, SubscriptionPlan $subscriptionPlan)
+    public function toggleStatus(Request $request, $id)
     {
+        $this->checkPermission('edit subscription plans');
+
         try {
-            $subscriptionPlan->is_active = !$subscriptionPlan->is_active;
-            $subscriptionPlan->save();
+            $plan = $this->subscriptionService->togglePlanStatus($id);
             
-            $subscriptionPlan->loadCount(['subscriptions as active_subscriptions_count' => function ($query) {
-                $query->whereIn('status', ['active', 'trial']);
-            }]);
-            
-            // Only return Inertia response for Inertia requests
-            if ($request->header('X-Inertia')) {
-                return redirect()->back()->with('success', 'Plan status updated successfully.');
+            // Check if it's an API request (from fetch in Vue)
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'message' => 'Plan status updated successfully',
+                    'is_active' => $plan->is_active
+                ]);
             }
-            
-            // For any other type of request, return a proper error
-            return response()->json(['error' => 'Invalid request type'], 400);
-            
+
+            return redirect()->back()
+                ->with('success', 'Plan status updated successfully.');
         } catch (\Exception $e) {
-            Log::error('Error toggling plan status: ' . $e->getMessage());
-            
-            if ($request->header('X-Inertia')) {
-                return redirect()->back()->with('error', $e->getMessage());
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['error' => $e->getMessage()], 500);
             }
             
-            return response()->json(['error' => $e->getMessage()], 500);
+            return redirect()->back()
+                ->with('error', $e->getMessage());
         }
     }
 }

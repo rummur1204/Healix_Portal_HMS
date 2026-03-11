@@ -12,9 +12,9 @@ return new class extends Migration
             $table->string('client_code')->unique();
             $table->string('organization_name');
             $table->unsignedBigInteger('organization_type_id')->nullable();
-            $table->string('primary_contact_name');
-            $table->string('primary_contact_email');
-            $table->string('primary_contact_phone');
+            // $table->string('primary_contact_name');
+            // $table->string('primary_contact_email');
+            // $table->string('primary_contact_phone');
             $table->string('address_country')->nullable();
             $table->string('address_city')->nullable();
             $table->text('address_line')->nullable();

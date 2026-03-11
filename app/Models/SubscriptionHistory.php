@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SubscriptionHistory extends Model
 {
-    use HasFactory;
+    protected $table = 'subscription_histories';
 
     protected $fillable = [
         'subscription_id',
@@ -27,78 +25,34 @@ class SubscriptionHistory extends Model
     ];
 
     protected $casts = [
-        'old_end_date' => 'datetime',
-        'new_end_date' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'old_price' => 'decimal:2',
+        'new_price' => 'decimal:2',
+        'old_end_date' => 'date',
+        'new_end_date' => 'date'
     ];
 
-    public function subscription(): BelongsTo
+    public function subscription()
     {
-        return $this->belongsTo(ClientSubscription::class);
+        return $this->belongsTo(ClientSubscription::class, 'subscription_id');
     }
 
-    public function client(): BelongsTo
+    public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class, 'client_id');
     }
 
-    public function performedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'performed_by_user_id');
-    }
-
-    public function oldPlan(): BelongsTo
+    public function oldPlan()
     {
         return $this->belongsTo(SubscriptionPlan::class, 'old_plan_id');
     }
 
-    public function newPlan(): BelongsTo
+    public function newPlan()
     {
         return $this->belongsTo(SubscriptionPlan::class, 'new_plan_id');
     }
 
-    public function getActionLabelAttribute()
+    public function performedBy()
     {
-        $labels = [
-            'created' => 'Created',
-            'assigned' => 'Assigned',
-            'updated' => 'Updated',
-            'renewed' => 'Renewed',
-            'cancelled' => 'Cancelled',
-            'suspended' => 'Suspended',
-            'reactivated' => 'Reactivated',
-            'activated' => 'Activated',
-            'deleted' => 'Deleted',
-            'upgraded' => 'Upgraded',
-            'downgraded' => 'Downgraded',
-            'status_changed' => 'Status Changed',
-            'payment_received' => 'Payment Received'
-        ];
-        
-        return $labels[$this->action] ?? ucfirst($this->action);
-    }
-
-    public function getChangesAttribute()
-    {
-        $changes = [];
-        
-        if ($this->old_plan_id && $this->new_plan_id) {
-            $changes[] = "Plan changed";
-        }
-        
-        if ($this->old_status && $this->new_status) {
-            $changes[] = "Status: {$this->old_status} → {$this->new_status}";
-        }
-        
-        if ($this->old_price && $this->new_price) {
-            $changes[] = "Price: $" . number_format($this->old_price, 2) . " → $" . number_format($this->new_price, 2);
-        }
-        
-        if ($this->old_end_date && $this->new_end_date) {
-            $changes[] = "End date: " . $this->old_end_date->format('Y-m-d') . " → " . $this->new_end_date->format('Y-m-d');
-        }
-        
-        return $changes;
+        return $this->belongsTo(User::class, 'performed_by_user_id');
     }
 }
