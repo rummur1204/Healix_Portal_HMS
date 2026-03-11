@@ -4,9 +4,7 @@
     <div class="ticket-form-container">
       <div class="form-header">
         <h1 class="form-title">{{ isEdit ? 'Edit Ticket' : 'Create New Ticket' }}</h1>
-        <button @click="cancel" class="btn-cancel">
-          Cancel
-        </button>
+        <button @click.prevent="cancel" class="btn-cancel">Cancel</button>
       </div>
 
       <form @submit.prevent="submitForm" class="ticket-form">
@@ -186,8 +184,22 @@
               <span v-if="errors.assigned_to_user_id" class="error-message">{{ errors.assigned_to_user_id }}</span>
             </div>
 
-            <!-- Active Toggle, Due Date, and Read-only fields remain same -->
-            <!-- ... (Keep your existing right column fields and form-actions) ... -->
+            <!-- Active Toggle -->
+            <div class="form-group">
+              <label class="active-toggle-label">
+                <input type="checkbox" class="active-checkbox" v-model="form.is_active" />
+                <div :class="['toggle-switch', form.is_active ? 'active' : '']"></div>
+                <div class="toggle-status">
+                  <span :class="form.is_active ? 'active-text' : 'inactive-text'">
+                    {{ form.is_active ? 'Active' : 'Inactive' }}
+                  </span>
+                  <span :class="['status-dot', form.is_active ? 'active-dot' : 'inactive-dot']"></span>
+                </div>
+              </label>
+              <div class="toggle-description" :class="form.is_active ? 'active-desc' : 'inactive-desc'">
+                Toggle whether the ticket is currently active
+              </div>
+            </div>
           </div>
         </div>
 
@@ -197,9 +209,7 @@
             <span v-if="loading" class="spinner"></span>
             {{ isEdit ? 'Update Ticket' : 'Create Ticket' }}
           </button>
-          <button type="button" @click="cancel" class="btn-cancel-form">
-            Cancel
-          </button>
+          <button type="button" @click.prevent="cancel" class="btn-cancel-form">Cancel</button>
         </div>
       </form>
     </div>
@@ -212,9 +222,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 export default {
   name: 'TicketForm',
-  components: {
-    AuthenticatedLayout
-  },
+  components: { AuthenticatedLayout },
   props: {
     ticket: Object,
     isEdit: Boolean,
@@ -241,9 +249,24 @@ export default {
     populateForm() {
       this.form = { ...this.ticket, assigned_to_user_id: this.ticket.assigned_to_user_id || null, is_active: this.ticket.is_active ?? true }
     },
-    async submitForm() { /* keep your existing submitForm logic */ },
-    cancel() { router.visit('/tickets') },
-    formatDate(date) { return date ? new Date(date).toLocaleDateString() : 'N/A' }
+    async submitForm() {
+      this.loading = true
+      this.errors = {}
+      try {
+        if (this.isEdit) {
+          await this.$inertia.put(`/tickets/${this.ticket.id}`, this.form)
+        } else {
+          await this.$inertia.post('/tickets', this.form)
+        }
+      } catch (error) {
+        if (error.response && error.response.status === 422) {
+          this.errors = error.response.data.errors || {}
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+    cancel() { router.visit('/tickets') }
   }
 }
 </script>
