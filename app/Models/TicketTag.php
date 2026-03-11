@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,12 @@ class TicketTag extends Model
     
     public function tickets()
     {
-        return $this->belongsToMany(Ticket::class, 'ticket_tag');
+        // Correct pivot table and keys
+        return $this->belongsToMany(
+            Ticket::class,           // Related model
+            'ticket_tag_ticket',     // Pivot table name
+            'ticket_tag_id',         // Foreign key on pivot for this model
+            'ticket_id'              // Foreign key on pivot for the related model
+        );
     }
 }
