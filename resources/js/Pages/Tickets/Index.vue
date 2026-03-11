@@ -57,9 +57,6 @@
               <th>Title</th>
               <th>Priority</th>
               <th>Status</th>
-              
-              <th>Comments</th>
-              <th>Attachments</th>
               <th @click="sortBy('active')" class="sortable text-center">Active <span v-if="sortField==='active'">{{ sortDirection==='asc'?'↑':'↓' }}</span></th>
               <th class="text-center">Actions</th>
             </tr>
@@ -76,23 +73,6 @@
               </td>
               <td><span :class="['priority-badge', ticket.priority]">{{ formatPriority(ticket.priority) }}</span></td>
               <td><span :class="['status-badge', ticket.status]">{{ formatStatus(ticket.status) }}</span></td>
-              
-              <td>
-                <button @click="viewTicketComments(ticket.id)" class="btn-comments">
-                  <svg class="comment-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
-                  </svg>
-                  {{ ticket.comments_count || 0 }}
-                </button>
-              </td>
-              <td>
-                <button @click="viewTicketAttachments(ticket.id)" class="btn-attachments">
-                  <svg class="attachment-icon" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clip-rule="evenodd"/>
-                  </svg>
-                  {{ ticket.attachments_count || 0 }}
-                </button>
-              </td>
               <td class="text-center">
                 <button 
                   @click="toggleActive(ticket)" 
@@ -106,12 +86,12 @@
                 </button>
               </td>
               <td class="text-center actions-cell">
-                 <!-- View Ticket -->
-  <button @click="viewTicket(ticket.id)" class="btn-icon-action" title="View Ticket">
-    <svg class="action-icon" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M10 3C5 3 1.73 7.11 1 10c.73 2.89 4 7 9 7s8.27-4.11 9-7c-.73-2.89-4-7-9-7zm0 11a4 4 0 110-8 4 4 0 010 8z"/>
-    </svg>
-  </button>
+                <!-- View Ticket -->
+                <button @click="viewTicket(ticket.id)" class="btn-icon-action" title="View Ticket">
+                  <svg class="action-icon" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 3C5 3 1.73 7.11 1 10c.73 2.89 4 7 9 7s8.27-4.11 9-7c-.73-2.89-4-7-9-7zm0 11a4 4 0 110-8 4 4 0 010 8z"/>
+                  </svg>
+                </button>
                 <button @click="editTicket(ticket.id)" class="btn-icon-action" title="Edit">
                   <svg class="action-icon" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
@@ -126,7 +106,7 @@
             </tr>
 
             <tr v-if="!tickets.data || tickets.data.length === 0">
-              <td colspan="15" class="text-center py-6 text-gray-500">No tickets found</td>
+              <td colspan="13" class="text-center py-6 text-gray-500">No tickets found</td>
             </tr>
           </tbody>
         </table>
@@ -193,22 +173,14 @@ export default {
   },
   methods: {
     viewTicket(id) {
-  router.visit(`/tickets/${id}/detail`);
-},
+      router.visit(`/tickets/${id}/detail`);
+    },
     createTicket() {
       router.visit('/tickets/create');
     },
     
     editTicket(id) {
       router.visit(`/tickets/${id}/edit`);
-    },
-    
-    viewTicketComments(id) {
-      router.visit(`/tickets/${id}/comments`);
-    },
-    
-    viewTicketAttachments(id) {
-      router.visit(`/tickets/${id}/attachments`);
     },
     
     deleteTicket(id) {
@@ -410,7 +382,7 @@ export default {
 .tickets-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1300px;
+  min-width: 1100px;
 }
 .tickets-table th, .tickets-table td {
   padding: 12px 16px;
@@ -433,33 +405,6 @@ export default {
 .ticket-desc {
   font-size: 13px;
   color: #555;
-}
-.btn-comments, .btn-attachments {
-  background: #f0fff0;
-  border: 1px solid #2c5e2c;
-  border-radius: 20px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s ease;
-  color: #2c5e2c;
-}
-.btn-attachments {
-  color: #2c5e2c;
-}
-.btn-comments:hover, .btn-attachments:hover {
-  background: #2c5e2c;
-  color: white;
-}
-.btn-comments:hover svg, .btn-attachments:hover svg {
-  fill: white;
-}
-.comment-icon, .attachment-icon {
-  width: 14px;
-  height: 14px;
 }
 .actions-cell {
   white-space: nowrap;
