@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -22,14 +23,22 @@ class SubscriptionPlan extends Model
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    /**
+     * Get all subscriptions for this plan
+     * FIXED: Added foreign key 'plan_id'
+     */
     public function subscriptions()
     {
-        return $this->hasMany(ClientSubscription::class);
+        return $this->hasMany(ClientSubscription::class, 'plan_id');
     }
 
+    /**
+     * Get active subscriptions for this plan
+     * FIXED: Added foreign key 'plan_id'
+     */
     public function activeSubscriptions()
     {
-        return $this->hasMany(ClientSubscription::class)
+        return $this->hasMany(ClientSubscription::class, 'plan_id')
             ->whereIn('status', ['active', 'trial']);
     }
 }
