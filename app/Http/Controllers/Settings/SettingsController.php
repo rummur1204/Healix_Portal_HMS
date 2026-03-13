@@ -136,6 +136,12 @@ class SettingsController extends Controller
     }
 
     /**
+     * =============================================
+     * USER MANAGEMENT CRUD METHODS
+     * =============================================
+     */
+
+    /**
      * Get users for API requests
      */
     public function getUsers()
@@ -285,6 +291,12 @@ class SettingsController extends Controller
     }
 
     /**
+     * =============================================
+     * ROLE MANAGEMENT CRUD METHODS
+     * =============================================
+     */
+
+    /**
      * Get roles for API requests
      */
     public function getRoles()
@@ -428,6 +440,12 @@ class SettingsController extends Controller
     }
 
     /**
+     * =============================================
+     * PERMISSION METHODS
+     * =============================================
+     */
+
+    /**
      * Get permissions for API requests
      */
     public function getPermissions()
@@ -450,6 +468,12 @@ class SettingsController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * =============================================
+     * ORGANIZATION TYPE CRUD METHODS
+     * =============================================
+     */
 
     /**
      * Get organization types for API requests
@@ -574,6 +598,12 @@ class SettingsController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * =============================================
+     * UTILITY METHODS
+     * =============================================
+     */
 
     /**
      * Get dashboard stats

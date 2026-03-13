@@ -36,9 +36,20 @@ class SubscriptionPlanController extends Controller
             $clientSubscriptions = $subscriptionController->getAllSubscriptionsForIndex() ?? [];
             $renewals = $renewalController->getRenewalsForIndex(30) ?? [];
             
-            $clients = Client::select('id', 'organization_name', 'primary_contact_email', 'primary_contact_phone')
+            // Updated client query to use actual column names
+            $clients = Client::select('id', 'organization_name', 'client_code', 'status')
                 ->orderBy('organization_name')
-                ->get();
+                ->get()
+                ->map(function ($client) {
+                    return [
+                        'id' => $client->id,
+                        'organization_name' => $client->organization_name,
+                        'primary_contact_email' => $client->client_code . '@example.com', // Placeholder until you add contact fields
+                        'primary_contact_phone' => 'Not available', // Placeholder until you add contact fields
+                        'client_code' => $client->client_code,
+                        'status' => $client->status,
+                    ];
+                });
 
             $pendingApprovalsCount = class_exists(DiscountApproval::class)
                 ? DiscountApproval::where('status', 'pending')->count()
