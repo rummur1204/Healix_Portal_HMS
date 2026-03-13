@@ -553,9 +553,6 @@ const getCsrfToken = () => {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
 }
 
-// Base URL for API calls
-const API_BASE = '/settings/api'
-
 // State
 const openAccordion = ref('users')
 const users = ref([])
@@ -620,13 +617,14 @@ const fetchData = async () => {
     try {
         const headers = {
             'X-CSRF-TOKEN': getCsrfToken(),
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         }
         
         const [usersRes, rolesRes, orgTypesRes] = await Promise.all([
-            fetch(`${API_BASE}/users`, { headers }),
-            fetch(`${API_BASE}/roles`, { headers }),
-            fetch(`${API_BASE}/organization-types`, { headers })
+            fetch('/settings/users', { headers }),
+            fetch('/settings/roles', { headers }),
+            fetch('/settings/organization-types', { headers })
         ])
         
         if (usersRes.ok) users.value = await usersRes.json()
@@ -661,7 +659,7 @@ const closeUserModal = () => {
 
 const saveUser = async () => {
     try {
-        const url = editingUser.value ? `${API_BASE}/users/${editingUser.value.id}` : `${API_BASE}/users`
+        const url = editingUser.value ? `/settings/users/${editingUser.value.id}` : '/settings/users'
         const method = editingUser.value ? 'PUT' : 'POST'
         
         const response = await fetch(url, {
@@ -669,7 +667,8 @@ const saveUser = async () => {
             headers: { 
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify(userForm.value)
         })
@@ -709,7 +708,7 @@ const closeRoleModal = () => {
 
 const saveRole = async () => {
     try {
-        const url = editingRole.value ? `${API_BASE}/roles/${editingRole.value.id}` : `${API_BASE}/roles`
+        const url = editingRole.value ? `/settings/roles/${editingRole.value.id}` : '/settings/roles'
         const method = editingRole.value ? 'PUT' : 'POST'
         
         const response = await fetch(url, {
@@ -717,7 +716,8 @@ const saveRole = async () => {
             headers: { 
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify(roleForm.value)
         })
@@ -757,7 +757,7 @@ const closeOrgTypeModal = () => {
 
 const saveOrgType = async () => {
     try {
-        const url = editingOrgType.value ? `${API_BASE}/organization-types/${editingOrgType.value.id}` : `${API_BASE}/organization-types`
+        const url = editingOrgType.value ? `/settings/organization-types/${editingOrgType.value.id}` : '/settings/organization-types'
         const method = editingOrgType.value ? 'PUT' : 'POST'
         
         const response = await fetch(url, {
@@ -765,7 +765,8 @@ const saveOrgType = async () => {
             headers: { 
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify(orgTypeForm.value)
         })
@@ -807,15 +808,16 @@ const confirmDeleteOrgType = (type) => {
 const executeDelete = async () => {
     try {
         let url = ''
-        if (deleteType.value === 'user') url = `${API_BASE}/users/${deleteItem.value.id}`
-        else if (deleteType.value === 'role') url = `${API_BASE}/roles/${deleteItem.value.id}`
-        else if (deleteType.value === 'orgType') url = `${API_BASE}/organization-types/${deleteItem.value.id}`
+        if (deleteType.value === 'user') url = `/settings/users/${deleteItem.value.id}`
+        else if (deleteType.value === 'role') url = `/settings/roles/${deleteItem.value.id}`
+        else if (deleteType.value === 'orgType') url = `/settings/organization-types/${deleteItem.value.id}`
         
         const response = await fetch(url, { 
             method: 'DELETE',
             headers: { 
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
         

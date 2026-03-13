@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Subscription;
 
 use App\Http\Controllers\Controller;
 use App\Models\SubscriptionPlan;
+use App\Models\Client;
+use App\Models\DiscountApproval;
 use App\Services\Subscription\SubscriptionService;
 use App\Http\Requests\Subscription\StoreSubscriptionPlanRequest;
 use App\Http\Requests\Subscription\UpdateSubscriptionPlanRequest;
@@ -18,6 +20,53 @@ class SubscriptionPlanController extends Controller
     public function __construct(SubscriptionService $subscriptionService)
     {
         $this->subscriptionService = $subscriptionService;
+    }
+
+    /**
+     * Main subscriptions dashboard page
+     */
+    public function subscriptionsIndex(Request $request)
+    {
+        try {
+            $planController = app(SubscriptionPlanController::class);
+            $subscriptionController = app(ClientSubscriptionController::class);
+            $renewalController = app(RenewalController::class);
+
+            $plans = $planController->getPlansForIndex() ?? [];
+            $clientSubscriptions = $subscriptionController->getAllSubscriptionsForIndex() ?? [];
+            $renewals = $renewalController->getRenewalsForIndex(30) ?? [];
+            
+            $clients = Client::select('id', 'organization_name', 'primary_contact_email', 'primary_contact_phone')
+                ->orderBy('organization_name')
+                ->get();
+
+            $pendingApprovalsCount = class_exists(DiscountApproval::class)
+                ? DiscountApproval::where('status', 'pending')->count()
+                : 0;
+
+            return Inertia::render('Subscriptions/Index', [
+                'plans' => $plans,
+                'clientSubscriptions' => $clientSubscriptions,
+                'renewals' => $renewals,
+                'clients' => $clients,
+                'filters' => $request->all(),
+                'pendingApprovalsCount' => $pendingApprovalsCount,
+                'error' => null
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error loading subscriptions page: ' . $e->getMessage());
+            
+            return Inertia::render('Subscriptions/Index', [
+                'plans' => [],
+                'clientSubscriptions' => [],
+                'renewals' => [],
+                'clients' => [],
+                'filters' => $request->all(),
+                'pendingApprovalsCount' => 0,
+                'error' => 'Failed to load subscription data: ' . $e->getMessage()
+            ]);
+        }
     }
 
     /**

@@ -34,24 +34,23 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-
     Route::resource('clients', ClientController::class);
-
     Route::post('clients/{client}/change-status', [ClientController::class, 'changeStatus'])->name('clients.change-status');
-
     Route::post('/clients/{client}/technical-info', [ClientTechnicalInfoController::class, 'storeOrUpdate'])->name('clients.technical-info.save');
 
+    // Client Notes
     Route::post('/clients/{client}/notes', [ClientNoteController::class, 'store'])->name('clients.notes.store');
     Route::put('/clients/{client}/notes/{note}', [ClientNoteController::class, 'update'])->name('clients.notes.update');
     Route::delete('/clients/{client}/notes/{note}', [ClientNoteController::class, 'destroy'])->name('clients.notes.destroy');
 
+    // Client Documents
     Route::post('/clients/{client}/docs', [ClientDocController::class, 'store'])->name('clients.docs.store');
     Route::delete('/docs/{doc}', [ClientDocController::class, 'destroy'])->name('clients.docs.destroy');
 
+    // Client Tasks
     Route::post('/clients/{client}/tasks', [ClientTaskController::class, 'store'])->name('clients.tasks.store');
     Route::patch('/tasks/{task}', [ClientTaskController::class, 'update'])->name('clients.tasks.update');
     Route::delete('/tasks/{task}', [ClientTaskController::class, 'destroy'])->name('clients.tasks.destroy');
-
 });
 
 /*
@@ -60,48 +59,8 @@ Route::middleware(['auth'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->group(function () {
-
     // Main subscription page
-    Route::get('/', function () {
-        try {
-            $planController = app(SubscriptionPlanController::class);
-            $subscriptionController = app(ClientSubscriptionController::class);
-            $renewalController = app(RenewalController::class);
-
-            $plans = $planController->getPlansForIndex() ?? [];
-            $clientSubscriptions = $subscriptionController->getAllSubscriptionsForIndex() ?? [];
-            $renewals = $renewalController->getRenewalsForIndex(30) ?? [];
-            $clients = Client::select('id', 'organization_name', 'primary_contact_email', 'primary_contact_phone')
-                ->orderBy('organization_name')->get();
-
-            $pendingApprovalsCount = class_exists('App\Models\DiscountApproval')
-                ? \App\Models\DiscountApproval::where('status', 'pending')->count()
-                : 0;
-
-            return Inertia\Inertia::render('Subscriptions/Index', [
-                'plans' => $plans,
-                'clientSubscriptions' => $clientSubscriptions,
-                'renewals' => $renewals,
-                'clients' => $clients,
-                'filters' => request()->all(),
-                'pendingApprovalsCount' => $pendingApprovalsCount,
-                'error' => null
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error in subscriptions route: ' . $e->getMessage());
-            return Inertia\Inertia::render('Subscriptions/Index', [
-                'plans' => [],
-                'clientSubscriptions' => [],
-                'renewals' => [],
-                'clients' => [],
-                'filters' => request()->all(),
-                'pendingApprovalsCount' => 0,
-                'error' => 'Failed to load subscription data: ' . $e->getMessage()
-            ]);
-        }
-    })->name('index');
-
+   Route::get('/', [SubscriptionPlanController::class, 'subscriptionsIndex'])->name('index');
     // Subscription Plans
     Route::resource('plans', SubscriptionPlanController::class)
         ->parameters(['plans' => 'subscriptionPlan']);
@@ -114,7 +73,6 @@ Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->gr
     Route::post('assign', [ClientSubscriptionController::class, 'assign'])->name('assign');
     Route::put('subscription/{id}', [ClientSubscriptionController::class, 'update'])->name('subscription.update');
     Route::delete('subscription/{id}', [ClientSubscriptionController::class, 'destroy'])->name('subscription.destroy');
-
     Route::put('subscription/{id}/cancel', [ClientSubscriptionController::class, 'cancel'])->name('subscription.cancel');
     Route::put('subscription/{id}/suspend', [ClientSubscriptionController::class, 'suspend'])->name('subscription.suspend');
     Route::put('subscription/{id}/reactivate', [ClientSubscriptionController::class, 'reactivate'])->name('subscription.reactivate');
@@ -143,79 +101,59 @@ Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->gr
     // Reports
     Route::get('reports/renewals', [SubscriptionReportController::class, 'renewals'])->name('reports.renewals');
     Route::get('reports/summary', [SubscriptionReportController::class, 'summary'])->name('reports.summary');
-
 });
 
 /*
 |--------------------------------------------------------------------------
-| SETTINGS MODULE
+| SETTINGS MODULE - CLEANED VERSION
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(function () {
+    // Main settings page
     Route::get('/', [SettingsController::class, 'index'])->name('index');
+    
+    // User management routes
+    Route::get('/users', [SettingsController::class, 'getUsers'])->name('users');
+    Route::post('/users', [SettingsController::class, 'storeUser'])->name('users.store');
+    Route::put('/users/{id}', [SettingsController::class, 'updateUser'])->name('users.update');
+    Route::delete('/users/{id}', [SettingsController::class, 'destroyUser'])->name('users.destroy');
+    
+    // Role management routes
+    Route::get('/roles', [SettingsController::class, 'getRoles'])->name('roles');
+    Route::post('/roles', [SettingsController::class, 'storeRole'])->name('roles.store');
+    Route::put('/roles/{id}', [SettingsController::class, 'updateRole'])->name('roles.update');
+    Route::delete('/roles/{id}', [SettingsController::class, 'destroyRole'])->name('roles.destroy');
+    
+    // Permission routes
+    Route::get('/permissions', [SettingsController::class, 'getPermissions'])->name('permissions');
+    
+    // Organization type routes
+    Route::get('/organization-types', [SettingsController::class, 'getOrganizationTypes'])->name('org-types');
+    Route::post('/organization-types', [SettingsController::class, 'storeOrganizationType'])->name('org-types.store');
+    Route::put('/organization-types/{id}', [SettingsController::class, 'updateOrganizationType'])->name('org-types.update');
+    Route::delete('/organization-types/{id}', [SettingsController::class, 'destroyOrganizationType'])->name('org-types.destroy');
+    
+    // Stats and refresh
     Route::get('/stats', [SettingsController::class, 'getStats'])->name('stats');
     Route::get('/refresh', [SettingsController::class, 'refresh'])->name('refresh');
-
-    Route::prefix('payments')->name('payments.')->group(function () {
-        Route::post('record', [PaymentController::class, 'record'])->name('record');
-        Route::get('subscription/{subscriptionId}', [PaymentController::class, 'history'])->name('history');
-        Route::post('{id}/void', [PaymentController::class, 'void'])->name('void');
-    });
-
-    // Test route
-    Route::get('/test/payments', function () {
-        return Inertia\Inertia::render('Test/Payments');
-    })->name('test.payments');
-
-    // Reports
-    Route::get('reports/renewals', [SubscriptionReportController::class, 'renewals'])->name('reports.renewals');
-    Route::get('reports/summary', [SubscriptionReportController::class, 'summary'])->name('reports.summary');
 });
+
+
+
+
 
 /*
-|--------------------------------------------------------------------------
-| CLIENTS API ROUTES
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('clients')->name('clients.')->group(function () {
-
-    Route::get('/list', function () {
-        $clients = Client::select('id', 'organization_name', 'primary_contact_email as email')
-            ->orderBy('organization_name')
-            ->get();
-        return response()->json($clients);
-    })->name('list');
-
-    Route::get('/active', function () {
-        $clients = Client::where('status', 'active')
-            ->select('id', 'organization_name', 'primary_contact_email as email')
-            ->orderBy('organization_name')
-            ->get();
-        return response()->json($clients);
-    })->name('active');
-
-    Route::get('/with-subscriptions', function () {
-        $clients = Client::whereHas('subscriptions')
-            ->withCount('subscriptions')
-            ->select('id', 'organization_name', 'primary_contact_email as email')
-            ->orderBy('organization_name')
-            ->get();
-        return response()->json($clients);
-    })->name('with-subscriptions');
-});
-
-
 |--------------------------------------------------------------------------
 | DASHBOARD + TICKETS
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'verified'])->group(function () {
-
-    // Dashboard & Profile
+    // Dashboard
     Route::get('/dashboard', function () {
         return Inertia\Inertia::render('Dashboard');
     })->name('dashboard');
 
+    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -247,15 +185,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/ticket/history/view', [TicketHistoryController::class, 'indexAll'])->name('tickets.history.view');
     Route::get('/tickets/history', [TicketHistoryController::class, 'indexAll'])->name('tickets.history.all');
     Route::delete('/history/{id}', [TicketHistoryController::class, 'destroy'])->name('history.destroy');
-
-});
-
-// Misc API routes
-Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
-    Route::get('/users/all', [SettingsController::class, 'getUsers'])->name('users.all');
-    Route::get('/roles/all', [SettingsController::class, 'getRoles'])->name('roles.all');
-    Route::get('/permissions/all', [SettingsController::class, 'getPermissions'])->name('permissions.all');
-    Route::get('/organization-types/all', [SettingsController::class, 'getOrganizationTypes'])->name('org-types.all');
 });
 
 require __DIR__.'/auth.php';
