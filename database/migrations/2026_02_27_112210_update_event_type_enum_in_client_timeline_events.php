@@ -11,11 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->index('organization_name');
-            // $table->index('primary_contact_email');
-            $table->index('status');
-            $table->index('organization_type_id');
+        Schema::table('client_timeline_events', function (Blueprint $table) {
+            //
         });
     }
 
@@ -24,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
+        Schema::table('client_timeline_events', function (Blueprint $table) {
             //
         });
     }

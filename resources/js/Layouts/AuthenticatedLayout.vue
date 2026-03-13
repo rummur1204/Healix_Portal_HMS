@@ -59,27 +59,42 @@ const currentPageIcon = computed(() => pageConfig.value.icon);
 <template>
     <div class="min-h-screen bg-gradient-to-br from-primary-50 to-teal-50 dark:from-primary-950 dark:to-teal-950 flex">
         <!-- Sidebar -->
-        <Sidebar @update:collapsed="isSidebarCollapsed = $event" :class="sidebarOpen ? 'w-64' : 'w-16'" />
+        <Sidebar @update:collapsed="isSidebarCollapsed = $event" />
 
         <!-- Main Content -->
         <div :class="['flex-1 transition-all duration-300', isSidebarCollapsed ? 'ml-20' : 'ml-64']">
             <!-- Top Bar -->
             <header class="bg-white/80 dark:bg-primary-900/80 backdrop-blur-xl border-b border-primary-200 dark:border-primary-800 sticky top-0 z-30 shadow-sm">
                 <div class="px-6 py-4">
+                    <!-- First Row: Page Title with Icon and Right Actions -->
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
+                            <!-- Page Icon -->
                             <div class="p-2.5 bg-gradient-to-br from-primary-500 to-teal-500 rounded-xl shadow-md">
                                 <component :is="currentPageIcon" class="w-5 h-5 text-white" />
                             </div>
-                            <h1 class="text-2xl font-bold text-primary-900 dark:text-white">{{ currentPageTitle }}</h1>
+                            <!-- Page Title -->
+                            <h1 class="text-2xl font-bold text-primary-900 dark:text-white">
+                                {{ currentPageTitle }}
+                            </h1>
                         </div>
 
+                        <!-- Right Side Actions -->
                         <div class="flex items-center space-x-4">
+                            <!-- Search (hidden on mobile) -->
                             <div class="relative hidden md:block">
                                 <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-400" />
-                                <input type="text" placeholder="Search..." class="pl-10 pr-4 py-2.5 w-64 rounded-xl border border-primary-200 dark:border-primary-700 bg-white dark:bg-primary-800/50 focus:ring-2 focus:ring-teal-500 transition-all" />
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    class="pl-10 pr-4 py-2.5 w-64 rounded-xl border border-primary-200 dark:border-primary-700 bg-white dark:bg-primary-800/50 focus:bg-white dark:focus:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 dark:placeholder-primary-500 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
+                                />
                             </div>
+
+                            <!-- Theme Toggle -->
                             <ThemeToggle />
+
+                            <!-- Notifications -->
                             <button class="relative p-2.5 rounded-xl hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
                                 <BellIcon class="w-5 h-5 text-primary-600 dark:text-primary-400" />
                                 <span class="absolute top-2 right-2 w-2 h-2 bg-teal-500 rounded-full ring-2 ring-white dark:ring-primary-900"></span>
@@ -87,19 +102,32 @@ const currentPageIcon = computed(() => pageConfig.value.icon);
                         </div>
                     </div>
 
+                    <!-- Second Row: Welcome Message -->
                     <div class="mt-3">
                         <p class="text-base text-primary-600 dark:text-primary-400">
                             Welcome back, <span class="font-semibold text-primary-900 dark:text-white">{{ userName }}</span>
                         </p>
                     </div>
                 </div>
+
+                <!-- Breadcrumbs -->
+                <div v-if="$slots.breadcrumbs" class="px-6 pb-3">
+                    <slot name="breadcrumbs" />
+                </div>
             </header>
 
             <!-- Page Content -->
-            <main class="flex-1 overflow-auto p-6">
-                <div v-if="flash?.success" class="mb-4 p-4 bg-green-100 dark:bg-green-900/50 border-l-4 border-green-500 text-green-800 dark:text-green-100 rounded-r-lg">{{ flash.success }}</div>
-                <div v-if="flash?.error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-800 dark:text-red-100 rounded-r-lg">{{ flash.error }}</div>
-                <div v-if="flash?.warning" class="mb-4 p-4 bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-100 rounded-r-lg">{{ flash.warning }}</div>
+            <main class="flex-1 overflow-auto p-6 dark:bg-black dark:min-h-screen">
+                <!-- Flash Messages -->
+                <div v-if="flash?.success" class="mb-4 p-4 bg-green-100 dark:bg-green-900/50 border-l-4 border-green-500 text-green-800 dark:text-green-100 rounded-r-lg">
+                    {{ flash.success }}
+                </div>
+                <div v-if="flash?.error" class="mb-4 p-4 bg-red-100 dark:bg-red-900/50 border-l-4 border-red-500 text-red-800 dark:text-red-100 rounded-r-lg">
+                    {{ flash.error }}
+                </div>
+                <div v-if="flash?.warning" class="mb-4 p-4 bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-yellow-500 text-yellow-800 dark:text-yellow-100 rounded-r-lg">
+                    {{ flash.warning }}
+                </div>
 
                 <slot />
             </main>
@@ -113,8 +141,36 @@ const currentPageIcon = computed(() => pageConfig.value.icon);
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
 }
-.webkit-scrollbar { width: 8px; height: 8px; }
-.webkit-scrollbar-track { background: #f0f7e8; }
-.webkit-scrollbar-thumb { background: #9bbb5e; border-radius: 4px; }
-.webkit-scrollbar-thumb:hover { background: #7fa545; }
+
+/* Custom scrollbar styles */
+.overflow-auto::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.overflow-auto::-webkit-scrollbar-track {
+  background: #f0f7e8;
+  border-radius: 4px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb {
+  background: #9bbb5e;
+  border-radius: 4px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb:hover {
+  background: #7fa545;
+}
+
+.dark .overflow-auto::-webkit-scrollbar-track {
+  background: #1a2e1a;
+}
+
+.dark .overflow-auto::-webkit-scrollbar-thumb {
+  background: #4a7a4a;
+}
+
+.dark .overflow-auto::-webkit-scrollbar-thumb:hover {
+  background: #5f9e5f;
+}
 </style>

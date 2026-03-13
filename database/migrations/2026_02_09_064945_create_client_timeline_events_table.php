@@ -11,7 +11,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('client_id');
             $table->enum('event_type', [
-                'profile_created', 'profile_updated', 'status_changed', 
+                'profile_created', 'profile_updated','profile_deleted', 'status_changed', 
                 'subscription_added', 'subscription_updated', 'ticket_created',
                 'ticket_updated', 'version_deployed', 'communication_sent',
                 'note_added', 'task_added', 'task_completed', 'document_uploaded'

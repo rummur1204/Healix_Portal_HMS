@@ -6,20 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->unique(
-                ['organization_name', ],
-                'clients_org_email_unique'
-            );
+            $table->softDeletes();
         });
     }
 
-    public function down()
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->dropUnique('clients_org_email_unique');
+            //
         });
     }
 };
