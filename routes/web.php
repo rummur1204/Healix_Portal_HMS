@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Clients\ClientController;
+
 
 
 use Illuminate\Support\Facades\Route;
@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\DB;
 Route::get('/', function () {
     return redirect('/login');
 });
+
+
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
@@ -33,3 +36,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/auth.php';
 require __DIR__.'/subscription.php';
 require __DIR__.'/settings.php';
+require __DIR__.'/clients.php';
