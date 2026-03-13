@@ -18,7 +18,29 @@ use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\OrganizationTypeController;
 use App\Models\Client;
+use App\Http\Controllers\FeatureRequestDetailController;
 
+Route::middleware(['auth'])->group(function () {
+
+    Route::get('/feature-requests', [FeatureRequestDetailController::class,'index'])
+        ->name('feature-requests.index');
+
+    Route::get('/feature-requests/create', [FeatureRequestDetailController::class,'create'])
+        ->name('feature-requests.create');
+
+    Route::post('/feature-requests', [FeatureRequestDetailController::class,'store'])
+        ->name('feature-requests.store');
+
+    Route::get('/feature-requests/{id}/edit', [FeatureRequestDetailController::class,'edit'])
+        ->name('feature-requests.edit');
+
+    Route::put('/feature-requests/{id}', [FeatureRequestDetailController::class,'update'])
+        ->name('feature-requests.update');
+
+    Route::delete('/feature-requests/{id}', [FeatureRequestDetailController::class,'destroy'])
+        ->name('feature-requests.destroy');
+
+});
 /*
 |--------------------------------------------------------------------------
 | Public Routes
