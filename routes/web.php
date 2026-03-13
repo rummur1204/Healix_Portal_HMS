@@ -19,6 +19,43 @@ use App\Http\Controllers\Settings\RoleController;
 use App\Http\Controllers\Settings\OrganizationTypeController;
 use App\Models\Client;
 use App\Http\Controllers\FeatureRequestDetailController;
+use App\Http\Controllers\SlaConfigurationController;
+use App\Http\Controllers\SlaTrackingController;
+
+Route::middleware(['auth', 'verified'])->group(function () {
+
+    Route::prefix('sla-tracking')->name('sla-tracking.')->group(function () {
+        Route::get('/', [SlaTrackingController::class, 'index'])->name('index');
+        Route::get('/create', [SlaTrackingController::class, 'create'])->name('create');
+        Route::post('/', [SlaTrackingController::class, 'store'])->name('store');
+        Route::get('/{slaTracking}/edit', [SlaTrackingController::class, 'edit'])->name('edit');
+        Route::put('/{slaTracking}', [SlaTrackingController::class, 'update'])->name('update');
+        Route::delete('/{slaTracking}', [SlaTrackingController::class, 'destroy'])->name('destroy');
+    });
+
+});
+
+Route::middleware(['auth'])->group(function () {
+
+Route::get('/sla-configurations', [SlaConfigurationController::class,'index'])
+->name('sla-configurations.index');
+
+Route::get('/sla-configurations/create', [SlaConfigurationController::class,'create'])
+->name('sla-configurations.create');
+
+Route::post('/sla-configurations', [SlaConfigurationController::class,'store'])
+->name('sla-configurations.store');
+
+Route::get('/sla-configurations/{id}/edit', [SlaConfigurationController::class,'edit'])
+->name('sla-configurations.edit');
+
+Route::put('/sla-configurations/{id}', [SlaConfigurationController::class,'update'])
+->name('sla-configurations.update');
+
+Route::delete('/sla-configurations/{id}', [SlaConfigurationController::class,'destroy'])
+->name('sla-configurations.destroy');
+
+});
 
 Route::middleware(['auth'])->group(function () {
 
@@ -50,114 +87,14 @@ Route::get('/', function () {
     return redirect('/login');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Subscription Module Routes (Protected)
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('subscriptions')->name('subscriptions.')->group(function () {
 
-    Route::get('/', function () {
-        return Inertia\Inertia::render('Subscriptions/Index');
-    })->name('index');
 
-    Route::resource('plans', SubscriptionPlanController::class)
-        ->parameters(['plans' => 'subscriptionPlan']);
-    Route::post('plans/{id}/toggle-status', [SubscriptionPlanController::class, 'toggleStatus'])
-        ->name('plans.toggle-status');
-    Route::get('plans/active/list', [SubscriptionPlanController::class, 'activePlans'])
-        ->name('plans.active');
+    
 
-    Route::get('client/{clientId}', [ClientSubscriptionController::class, 'clientSubscriptions'])
-        ->name('client.subscriptions');
-    Route::get('client-subscriptions/all', [ClientSubscriptionController::class, 'allSubscriptions'])
-        ->name('client-subscriptions.all');
-    Route::post('assign', [ClientSubscriptionController::class, 'assign'])
-        ->name('assign');
-    Route::get('subscription/{id}', [ClientSubscriptionController::class, 'show'])
-        ->name('subscription.show');
-    Route::put('subscription/{id}/cancel', [ClientSubscriptionController::class, 'cancel'])
-        ->name('subscription.cancel');
-    Route::put('subscription/{id}/suspend', [ClientSubscriptionController::class, 'suspend'])
-        ->name('subscription.suspend');
-    Route::put('subscription/{id}/reactivate', [ClientSubscriptionController::class, 'reactivate'])
-        ->name('subscription.reactivate');
-    Route::get('subscription/{id}/history', [ClientSubscriptionController::class, 'history'])
-        ->name('subscription.history');
 
-    Route::get('renewals', [RenewalController::class, 'index'])->name('renewals.index');
-    Route::get('renewals/due/{days?}', [RenewalController::class, 'due'])->name('renewals.due');
-    Route::post('renewals/{id}/process', [RenewalController::class, 'process'])->name('renewals.process');
 
-    Route::prefix('payments')->name('payments.')->group(function () {
-        Route::post('record', [PaymentController::class, 'record'])->name('record');
-        Route::get('subscription/{subscriptionId}', [PaymentController::class, 'history'])->name('history');
-        Route::post('{id}/void', [PaymentController::class, 'void'])->name('void');
-        Route::get('{subscriptionId}/summary', [PaymentController::class, 'summary'])->name('summary');
-    });
 
-    // Test route (keep from HEAD branch)
-    Route::get('/test/payments', function () {
-        return Inertia\Inertia::render('Test/Payments');
-    })->name('test.payments');
 
-    // Reports
-    Route::get('reports/renewals', [SubscriptionReportController::class, 'renewals'])->name('reports.renewals');
-    Route::get('reports/summary', [SubscriptionReportController::class, 'summary'])->name('reports.summary');
-    Route::get('reports/mrr', [SubscriptionReportController::class, 'mrr'])->name('reports.mrr');
-    Route::get('reports/churn', [SubscriptionReportController::class, 'churn'])->name('reports.churn');
-    Route::get('reports/export/renewals', [SubscriptionReportController::class, 'exportRenewals'])->name('reports.export.renewals');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Clients API Routes
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('clients')->name('clients.')->group(function () {
-    Route::get('/list', function () {
-        $clients = Client::select('id', 'organization_name', 'primary_contact_email as email')
-            ->orderBy('organization_name')
-            ->get();
-        return response()->json($clients);
-    })->name('list');
-
-    Route::get('/active', function () {
-        $clients = Client::where('status', 'active')
-            ->select('id', 'organization_name', 'primary_contact_email as email')
-            ->orderBy('organization_name')
-            ->get();
-        return response()->json($clients);
-    })->name('active');
-
-    Route::get('/with-subscriptions', function () {
-        $clients = Client::whereHas('subscriptions')
-            ->withCount('subscriptions')
-            ->select('id', 'organization_name', 'primary_contact_email as email')
-            ->orderBy('organization_name')
-            ->get();
-        return response()->json($clients);
-    })->name('with-subscriptions');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Settings Module Routes
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('settings')->name('settings.')->group(function () {
-    Route::get('/', [SettingsController::class, 'index'])->name('index');
-    Route::get('/stats', [SettingsController::class, 'getStats'])->name('stats');
-    Route::get('/refresh', [SettingsController::class, 'refresh'])->name('refresh');
-    Route::get('/users/all', [SettingsController::class, 'getUsers'])->name('users.all');
-    Route::get('/roles/all', [SettingsController::class, 'getRoles'])->name('roles.all');
-    Route::get('/permissions/all', [SettingsController::class, 'getPermissions'])->name('permissions.all');
-    Route::get('/organization-types/all', [SettingsController::class, 'getOrganizationTypes'])->name('org-types.all');
-
-    Route::prefix('api')->name('api.')->group(function () {
-        // Users, Roles, Organization Types API routes...
-    });
-});
 
 /*
 |--------------------------------------------------------------------------
