@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClientTechnicalInfo extends Model
 {
+    protected $table = 'client_technical_info';
+    
     protected $fillable = [
         'client_id', 'remote_access_enabled', 'anydesk_address', 'anydesk_password',
         'server_setup_date', 'server_activation_date', 'last_activation_update_date',

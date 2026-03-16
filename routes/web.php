@@ -94,6 +94,7 @@ Route::get('/', function () {
 | Authenticated Routes (Tickets, Dashboard, Profile)
 |--------------------------------------------------------------------------
 */
+
 Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dashboard', function () {
@@ -168,3 +169,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/ticket.php';
 require __DIR__.'/version.php';
 require __DIR__.'/auth.php';
+
+   
+
+require __DIR__.'/auth.php';
+require __DIR__.'/clients.php';
