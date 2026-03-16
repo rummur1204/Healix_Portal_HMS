@@ -32,7 +32,7 @@ class SlaTrackingController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'ticket_id' => 'required|exists:tickets,id|unique:sla_tracking,ticket_id',
+            'ticket_id' => 'required|exists:tickets,id|unique:sla_trackings,ticket_id', // ✅ updated
             'first_response_due' => 'nullable|date',
             'first_response_actual' => 'nullable|date',
             'resolution_due' => 'nullable|date',
@@ -60,7 +60,7 @@ class SlaTrackingController extends Controller
     public function update(Request $request, SlaTracking $slaTracking)
     {
         $data = $request->validate([
-            'ticket_id' => 'required|exists:tickets,id|unique:sla_tracking,ticket_id,' . $slaTracking->id,
+            'ticket_id' => 'required|exists:tickets,id|unique:sla_trackings,ticket_id,' . $slaTracking->id, // ✅ updated
             'first_response_due' => 'nullable|date',
             'first_response_actual' => 'nullable|date',
             'resolution_due' => 'nullable|date',

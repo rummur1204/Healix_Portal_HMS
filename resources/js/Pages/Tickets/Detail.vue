@@ -160,7 +160,86 @@
         </div>
         <p v-else class="empty-text">No attachments uploaded yet.</p>
       </div>
+      <!-- Feature Requests Section -->
+<!-- Feature Requests Section -->
+<div class="detail-section">
+  <div class="section-header">
+    <h2>Feature Requests ({{ ticket.features?.length || 0 }})</h2>
+    <button @click="openFeatureModal()" class="btn-add">
+      <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+      </svg>
+      Add Feature Request
+    </button>
+  </div>
 
+  <div v-if="ticket.features?.length" class="features-list">
+    <div v-for="feature in ticket.features" :key="feature.id" class="feature-card">
+      <div class="feature-header">
+        <strong>{{ feature.title }}</strong>
+        <div class="feature-actions">
+          <button @click="editFeature(feature)" class="btn-icon-sm">✏️</button>
+          <button @click="deleteFeature(feature)" class="btn-icon-sm text-red-600">🗑️</button>
+        </div>
+      </div>
+      <p>{{ feature.description }}</p>
+      <div class="feature-meta">
+        <span :class="['priority-badge', feature.business_value]">{{ formatValue(feature.business_value) }}</span>
+        <span>{{ feature.estimated_effort }} hrs</span>
+        <span>{{ feature.target_release ?? 'TBD' }}</span>
+        <span :class="['status-badge', feature.approval_status]">{{ formatStatus(feature.approval_status) }}</span>
+      </div>
+    </div>
+  </div>
+  <p v-else class="empty-text">No feature requests yet.</p>
+</div>
+
+<!-- Feature Request Modal -->
+<div v-if="showFeatureModal" class="modal-overlay" @click.self="closeFeatureModal">
+  <div class="modal-content">
+    <h3>{{ editingFeature ? 'Edit Feature Request' : 'Add Feature Request' }}</h3>
+    <form @submit.prevent="saveFeature">
+      <div class="form-group">
+        <label for="feature-title">Title</label>
+        <input type="text" id="feature-title" v-model="featureForm.title" class="form-input" required />
+      </div>
+      <div class="form-group">
+        <label for="feature-description">Description</label>
+        <textarea id="feature-description" v-model="featureForm.description" class="form-input" rows="4" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="business-value">Business Value</label>
+        <select v-model="featureForm.business_value" class="form-input" required>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="effort">Estimated Effort (hrs)</label>
+        <input type="number" id="effort" v-model="featureForm.estimated_effort" class="form-input" required />
+      </div>
+      <div class="form-group">
+        <label for="target-release">Target Release</label>
+        <input type="text" id="target-release" v-model="featureForm.target_release" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select v-model="featureForm.approval_status" class="form-input">
+          <option value="proposed">Proposed</option>
+          <option value="approved">Approved</option>
+          <option value="planned">Planned</option>
+          <option value="delivered">Delivered</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-save">{{ featureForm.processing ? 'Saving...' : 'Save' }}</button>
+        <button type="button" class="btn-cancel" @click="closeFeatureModal">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
       <!-- History Section -->
       <div class="detail-section">
         <div class="section-header">
@@ -302,6 +381,81 @@ export default {
     }
   },
   methods: {
+   data() {
+  return {
+    // feature request modal
+    showFeatureModal: false,
+    editingFeature: null,
+    featureForm: {
+      id: null,
+      title: '',
+      description: '',
+      business_value: 'low',
+      estimated_effort: 1,
+      target_release: '',
+      approval_status: 'proposed',
+      processing: false
+    }
+  }
+},
+methods: {
+  openFeatureModal(feature = null) {
+    if (feature) {
+      this.editingFeature = feature
+      Object.assign(this.featureForm, feature)
+    } else {
+      this.editingFeature = null
+      this.featureForm = {
+        id: null,
+        title: '',
+        description: '',
+        business_value: 'low',
+        estimated_effort: 1,
+        target_release: '',
+        approval_status: 'proposed',
+        processing: false
+      }
+    }
+    this.showFeatureModal = true
+  },
+  closeFeatureModal() {
+    this.showFeatureModal = false
+    this.editingFeature = null
+  },
+  saveFeature() {
+    this.featureForm.processing = true
+    const payload = { ...this.featureForm }
+    const url = this.editingFeature
+      ? `/tickets/${this.ticket.id}/feature-requests/${this.editingFeature.id}`
+      : `/tickets/${this.ticket.id}/feature-requests`
+    const method = this.editingFeature ? 'put' : 'post'
+
+    router[method](url, payload, {
+      preserveScroll: true,
+      onSuccess: () => {
+        this.showFeatureModal = false
+        this.featureForm.processing = false
+      },
+      onError: (errors) => {
+        alert('Failed to save feature request: ' + JSON.stringify(errors))
+        this.featureForm.processing = false
+      }
+    })
+  },
+  deleteFeature(feature) {
+    if (!confirm('Delete this feature request?')) return
+    router.delete(`/tickets/${this.ticket.id}/feature-requests/${feature.id}`, {
+      preserveScroll: true
+    })
+  },
+  formatValue(v) {
+    return v.charAt(0).toUpperCase() + v.slice(1)
+  },
+  formatStatus(s) {
+    const statuses = { proposed:'Proposed', approved:'Approved', planned:'Planned', delivered:'Delivered', rejected:'Rejected' }
+    return statuses[s] || s
+  }
+},
     goBack() {
       router.visit('/tickets')
     },
