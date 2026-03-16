@@ -26,7 +26,7 @@
                     </div>
                     <div class="flex items-center space-x-4">
                         <span class="px-3 py-1.5 bg-white/20 text-white text-sm font-medium rounded-lg border border-white/30">
-                            {{ users.length }} Users
+                            {{ users?.length || 0 }} Users
                         </span>
                         <ChevronDownIcon 
                             class="w-5 h-5 text-white transition-transform duration-300"
@@ -146,7 +146,7 @@
                     </div>
                     <div class="flex items-center space-x-4">
                         <span class="px-3 py-1.5 bg-white/20 text-white text-sm font-medium rounded-lg border border-white/30">
-                            {{ roles.length }} Roles
+                            {{ roles?.length || 0 }} Roles
                         </span>
                         <ChevronDownIcon 
                             class="w-5 h-5 text-white transition-transform duration-300"
@@ -202,13 +202,14 @@
                                         </td>
                                         <td class="px-6 py-4">
                                             <div class="flex flex-wrap gap-1.5 max-w-xl">
-                                                <span v-for="perm in role.permissions?.slice(0, 4)" :key="perm.id"
+                                                <!-- SAFE CHECK: Check if permissions exists and has length -->
+                                                <span v-for="perm in (role.permissions || []).slice(0, 4)" :key="perm?.id || perm"
                                                       class="px-3 py-1.5 bg-primary-100 dark:bg-primary-700 text-primary-700 dark:text-primary-300 text-sm rounded-lg border border-primary-200 dark:border-primary-600">
-                                                    {{ perm.name }}
+                                                    {{ perm?.name || perm }}
                                                 </span>
-                                                <span v-if="role.permissions?.length > 4"
+                                                <span v-if="(role.permissions?.length || 0) > 4"
                                                       class="px-3 py-1.5 bg-primary-100 dark:bg-primary-700 text-primary-700 dark:text-primary-300 text-sm rounded-lg border border-primary-200 dark:border-primary-600">
-                                                    +{{ role.permissions.length - 4 }} more
+                                                    +{{ (role.permissions?.length || 0) - 4 }} more
                                                 </span>
                                                 <span v-if="!role.permissions || role.permissions.length === 0"
                                                       class="text-primary-500 dark:text-primary-400 text-sm italic">No permissions</span>
@@ -271,7 +272,7 @@
                     </div>
                     <div class="flex items-center space-x-4">
                         <span class="px-3 py-1.5 bg-white/20 text-white text-sm font-medium rounded-lg border border-white/30">
-                            {{ orgTypes.length }} Types
+                            {{ orgTypes?.length || 0 }} Types
                         </span>
                         <ChevronDownIcon 
                             class="w-5 h-5 text-white transition-transform duration-300"
@@ -553,9 +554,6 @@ const getCsrfToken = () => {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
 }
 
-// Base URL for API calls
-const API_BASE = '/settings/api'
-
 // State
 const openAccordion = ref('users')
 const users = ref([])
@@ -597,18 +595,22 @@ const getTypeIcon = (name) => {
 // Computed
 const groupedPermissions = computed(() => {
     const groups = {}
-    permissions.value.forEach(perm => {
-        const [group] = perm.name.split(' ')
-        const groupName = group.charAt(0).toUpperCase() + group.slice(1)
-        if (!groups[groupName]) groups[groupName] = { name: groupName, permissions: [] }
-        groups[groupName].permissions.push(perm)
-    })
+    if (permissions.value && Array.isArray(permissions.value)) {
+        permissions.value.forEach(perm => {
+            if (perm && perm.name) {
+                const [group] = perm.name.split(' ')
+                const groupName = group ? group.charAt(0).toUpperCase() + group.slice(1) : 'Other'
+                if (!groups[groupName]) groups[groupName] = { name: groupName, permissions: [] }
+                groups[groupName].permissions.push(perm)
+            }
+        })
+    }
     return Object.values(groups)
 })
 
 // Helper functions
-const getUserInitials = (name) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-const formatPermissionName = (name) => name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+const getUserInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'
+const formatPermissionName = (name) => name ? name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : ''
 
 // Toggle accordion
 const toggleAccordion = (accordion) => {
@@ -620,22 +622,36 @@ const fetchData = async () => {
     try {
         const headers = {
             'X-CSRF-TOKEN': getCsrfToken(),
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         }
         
         const [usersRes, rolesRes, orgTypesRes] = await Promise.all([
-            fetch(`${API_BASE}/users`, { headers }),
-            fetch(`${API_BASE}/roles`, { headers }),
-            fetch(`${API_BASE}/organization-types`, { headers })
+            fetch('/settings/users', { headers }),
+            fetch('/settings/roles', { headers }),
+            fetch('/settings/organization-types', { headers })
         ])
         
-        if (usersRes.ok) users.value = await usersRes.json()
+        if (usersRes.ok) {
+            const data = await usersRes.json()
+            users.value = Array.isArray(data) ? data : []
+        }
+        
         if (rolesRes.ok) {
             const data = await rolesRes.json()
-            roles.value = data.roles
-            permissions.value = data.permissions
+            // Handle different response structures
+            if (data.roles) {
+                roles.value = Array.isArray(data.roles) ? data.roles : []
+                permissions.value = Array.isArray(data.permissions) ? data.permissions : []
+            } else {
+                roles.value = Array.isArray(data) ? data : []
+            }
         }
-        if (orgTypesRes.ok) orgTypes.value = await orgTypesRes.json()
+        
+        if (orgTypesRes.ok) {
+            const data = await orgTypesRes.json()
+            orgTypes.value = Array.isArray(data) ? data : []
+        }
     } catch (error) {
         console.error('Error fetching data:', error)
     }
@@ -661,7 +677,7 @@ const closeUserModal = () => {
 
 const saveUser = async () => {
     try {
-        const url = editingUser.value ? `${API_BASE}/users/${editingUser.value.id}` : `${API_BASE}/users`
+        const url = editingUser.value ? `/settings/users/${editingUser.value.id}` : '/settings/users'
         const method = editingUser.value ? 'PUT' : 'POST'
         
         const response = await fetch(url, {
@@ -669,7 +685,8 @@ const saveUser = async () => {
             headers: { 
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify(userForm.value)
         })
@@ -698,7 +715,10 @@ const openRoleModal = () => {
 
 const editRole = (role) => { 
     editingRole.value = role; 
-    roleForm.value = { name: role.name, permissions: role.permissions?.map(p => p.name) || [] }; 
+    roleForm.value = { 
+        name: role.name, 
+        permissions: role.permissions?.map(p => p.name) || [] 
+    }; 
     showRoleModal.value = true 
 }
 
@@ -709,7 +729,7 @@ const closeRoleModal = () => {
 
 const saveRole = async () => {
     try {
-        const url = editingRole.value ? `${API_BASE}/roles/${editingRole.value.id}` : `${API_BASE}/roles`
+        const url = editingRole.value ? `/settings/roles/${editingRole.value.id}` : '/settings/roles'
         const method = editingRole.value ? 'PUT' : 'POST'
         
         const response = await fetch(url, {
@@ -717,7 +737,8 @@ const saveRole = async () => {
             headers: { 
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify(roleForm.value)
         })
@@ -757,7 +778,7 @@ const closeOrgTypeModal = () => {
 
 const saveOrgType = async () => {
     try {
-        const url = editingOrgType.value ? `${API_BASE}/organization-types/${editingOrgType.value.id}` : `${API_BASE}/organization-types`
+        const url = editingOrgType.value ? `/settings/organization-types/${editingOrgType.value.id}` : '/settings/organization-types'
         const method = editingOrgType.value ? 'PUT' : 'POST'
         
         const response = await fetch(url, {
@@ -765,7 +786,8 @@ const saveOrgType = async () => {
             headers: { 
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify(orgTypeForm.value)
         })
@@ -807,15 +829,16 @@ const confirmDeleteOrgType = (type) => {
 const executeDelete = async () => {
     try {
         let url = ''
-        if (deleteType.value === 'user') url = `${API_BASE}/users/${deleteItem.value.id}`
-        else if (deleteType.value === 'role') url = `${API_BASE}/roles/${deleteItem.value.id}`
-        else if (deleteType.value === 'orgType') url = `${API_BASE}/organization-types/${deleteItem.value.id}`
+        if (deleteType.value === 'user') url = `/settings/users/${deleteItem.value.id}`
+        else if (deleteType.value === 'role') url = `/settings/roles/${deleteItem.value.id}`
+        else if (deleteType.value === 'orgType') url = `/settings/organization-types/${deleteItem.value.id}`
         
         const response = await fetch(url, { 
             method: 'DELETE',
             headers: { 
                 'X-CSRF-TOKEN': getCsrfToken(),
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
         

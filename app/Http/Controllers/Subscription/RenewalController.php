@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Subscription;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClientSubscription;
 use App\Services\Subscription\SubscriptionService;
-use App\Http\Requests\Subscription\ProcessRenewalRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class RenewalController extends Controller
 {
@@ -18,77 +20,105 @@ class RenewalController extends Controller
     }
 
     /**
-     * Check permission helper
+     * Get renewals for the main index page
      */
-    private function checkPermission($permission)
+    public function getRenewalsForIndex($days = 30)
     {
-        if (!auth()->user()->can($permission)) {
-            abort(403, 'Unauthorized');
+        try {
+            return $this->subscriptionService->getRenewalsDue($days);
+        } catch (\Exception $e) {
+            Log::error('Error in getRenewalsForIndex: ' . $e->getMessage());
+            return [];
         }
     }
 
     /**
-     * Show renewals dashboard
+     * Display renewals due
      */
-    public function index()
+    public function index(Request $request)
     {
-        $this->checkPermission('view renewals report');
+        try {
+            $days = $request->get('days', 30);
+            $renewals = $this->subscriptionService->getRenewalsDue($days);
 
-        return Inertia::render('Subscriptions/Renewals/Index', [
-            'stats' => [
-                'due_today' => $this->subscriptionService->getRenewalsDue(0)->count(),
-                'due_7_days' => $this->subscriptionService->getRenewalsDue(7)->count(),
-                'due_15_days' => $this->subscriptionService->getRenewalsDue(15)->count(),
-                'due_30_days' => $this->subscriptionService->getRenewalsDue(30)->count(),
-            ]
-        ]);
+            if ($request->header('X-Inertia')) {
+                return Inertia::render('Subscriptions/Renewals/Index', [
+                    'renewals' => $renewals,
+                    'days' => $days
+                ]);
+            }
+
+            return response()->json([
+                'data' => $renewals
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in index: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     /**
-     * Get renewals due in X days
+     * Get renewals due in specified days - FIXED to return JSON for API calls
      */
-    public function due($days = 30, Request $request)
+    public function due(Request $request, $days = 30)
     {
-        $this->checkPermission('view renewals report');
+        try {
+            // Get the days parameter from the URL if provided
+            $days = (int) $days;
+            
+            Log::info('Fetching renewals due in next ' . $days . ' days');
+            
+            $renewals = $this->subscriptionService->getRenewalsDue($days);
+            
+            Log::info('Found ' . $renewals->count() . ' renewals due');
 
-        $renewals = $this->subscriptionService->getRenewalsDue($days);
-
-        if ($request->wantsJson()) {
-            return response()->json($renewals);
+            // Return JSON response for API calls from the frontend
+            return response()->json([
+                'renewals' => $renewals
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in due: ' . $e->getMessage());
+            return response()->json([
+                'renewals' => [],
+                'error' => 'Failed to load renewals: ' . $e->getMessage()
+            ], 500);
         }
-
-        return Inertia::render('Subscriptions/Renewals/Due', [
-            'renewals' => $renewals,
-            'days' => $days,
-        ]);
     }
 
     /**
      * Process a renewal
      */
-    public function process($id, ProcessRenewalRequest $request)
+    public function process(Request $request, $id)
     {
-        $this->checkPermission('process renewals');
-
         try {
-            $newSubscription = $this->subscriptionService->processRenewal($id);
+            Log::info('Processing renewal for subscription ID: ' . $id);
+            
+            $subscription = $this->subscriptionService->processRenewal($id);
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'subscription' => $newSubscription
-                ]);
+            Log::info('Renewal processed successfully for subscription ID: ' . $id);
+
+            if ($request->header('X-Inertia')) {
+                return redirect()->back()
+                    ->with('success', 'Renewal processed successfully.');
             }
 
-            return redirect()->route('subscriptions.subscription.show', $newSubscription->id)
-                ->with('success', 'Renewal processed successfully.');
+            return response()->json([
+                'success' => true,
+                'message' => 'Renewal processed successfully',
+                'subscription' => $subscription
+            ]);
         } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json(['error' => $e->getMessage()], 422);
+            Log::error('Error processing renewal: ' . $e->getMessage());
+            
+            if ($request->header('X-Inertia')) {
+                return redirect()->back()
+                    ->with('error', 'Failed to process renewal: ' . $e->getMessage());
             }
 
-            return redirect()->back()
-                ->with('error', $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
