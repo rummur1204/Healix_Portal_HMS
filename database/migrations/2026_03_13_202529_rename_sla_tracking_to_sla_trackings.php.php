@@ -1,0 +1,18 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+class RenameSlaTrackingToSlaTrackings extends Migration
+{
+    public function up(): void
+    {
+        Schema::rename('sla_tracking', 'sla_trackings');
+    }
+
+    public function down(): void
+    {
+        Schema::rename('sla_trackings', 'sla_tracking');
+    }
+}
